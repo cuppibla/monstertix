@@ -79,6 +79,9 @@ Long sessions get summarized. `App(events_compaction_config=EventsCompactionConf
 :::code path="agent/concert/agent.py" highlight="^app = App\(|events_compaction_config=EventsCompactionConfig\(|compaction_interval=|overlap_size=|summarizer=LlmEventSummarizer"
 :::
 
+:::figure src="/docs-img/05-02-compaction.png" caption="compaction_interval=3, overlap_size=1: summary B starts one turn before summary A ended, so a question and its answer are never split across two summaries. The summaries are rows in the session store."
+:::
+
 :::figure src="/docs-img/04-02-oldsession2.png" caption="two-days-ago in the Events list: row #5, marked N, is where a summary stands in for the turns before it. That row is the compaction record."
 :::
 

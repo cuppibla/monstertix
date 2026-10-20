@@ -8,6 +8,10 @@ to two pairs of tickets. This section breaks the response on purpose and
 watches the retry come back with the *same* order.
 
 :::exercise id="run"
+:::figure src="/docs-img/07-01-solution2.png" caption="The venue charges the order and then the reply fails. The retry carries the same idempotency key, so the venue answers with the order it already has: last_order is set once."
+:::
+:::figure src="/docs-img/09-01-hitl5.png" caption="One order, exactly as intended: 2× section A · 420, and section A's count down by two. However many times the purchase was retried."
+:::
 ## The reset, and what it keeps
 
 **Reset the venue** above clears orders, queue and inventory, and nothing

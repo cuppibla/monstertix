@@ -76,6 +76,9 @@ this code at a real seller.
 
 ## The pieces
 
+:::figure src="/docs-img/overview.png" caption="The whole thing, by the end of chapter 6: MonsterTix on Cloud Run with its graph and its Runner, the three stores on the left, the venue and the scheduler on the right. Every chapter adds one piece of this picture."
+:::
+
 | Piece | What it is | Where |
 |---|---|---|
 | the venue | a FastAPI service with SQLite: shows, sections, a draining queue, orders, the panel | `venue/`, running on :8080 |

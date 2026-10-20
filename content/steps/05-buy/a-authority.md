@@ -8,6 +8,12 @@ the graph, before anything is searched or queued — and keeps it in a place
 the next session will not inherit.
 
 :::exercise id="run"
+:::figure src="/docs-img/09-02-workflow.png" caption="Chapter 4's graph with agree_budget in front: it asks, reads the number back, and stores the ask and the budget before anything is searched or queued. Two RequestInput pauses: one for a person, one for the queue."
+:::
+:::figure src="/docs-img/09-01-hitl1.png" caption="The run stops and asks what you will spend, in the event's own response box. Nothing is searched until you answer."
+:::
+:::figure src="/docs-img/09-01-hitl3.png" caption="budget in the State tab, in your own words, next to queue_ticket. Plain session state: the next session will not inherit it."
+:::
 ## The graph, one node longer
 
 :::code path="agent/concert/nightly.py" highlight="^nightly = Workflow\(|edges=\[\(START, agree_budget"

@@ -10,6 +10,12 @@ model's caution. This section makes the plan stale on cue and watches the
 guard refuse.
 
 :::exercise id="run"
+:::figure src="/docs-img/07-01-bug1.png" caption="SELL THE GOOD SEATS on the venue panel: section A goes to zero while the run is parked. The agent's saved seat map is now a lie, and nothing told it."
+:::
+:::figure src="/docs-img/07-01-bug2.png" caption="Without a guard: the purchase is attempted on the stale plan and the venue refuses it. The agent only finds out by failing."
+:::
+:::figure src="/docs-img/07-01-solution1.png" caption="With a refresh before purchase: the seat map is read again first, section A is gone, and what is actually there is offered instead."
+:::
 ## What the model holds
 
 `get_seatmap` wrote two things when the picker called it: the full seat map as

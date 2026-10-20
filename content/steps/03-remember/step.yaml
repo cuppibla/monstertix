@@ -206,12 +206,14 @@ parts:
         items:
         - text: >-
             In the ADK web UI, open the **State** tab of your current session and write down the
-            keys. Then switch to `two-days-ago` and do the same. One key is in both.
+            keys. Then switch to `two-days-ago` and do the same. One key is in both. **Switch
+            back to your own session** (the dropdown at the top) before the next step.
           look: agent
         - text: >-
-            Open the **Artifacts** tab in your current session: `seatmap_ms-ams-01.json`, version 0.
-            In the explorer, expand `artifacts/` and find the same file on disk; press ↻ if it is
-            not listed yet.
+            Open the **Artifacts** tab, in the session where you asked for the seat map in 3a or
+            3b: `seatmap_ms-ams-01.json`, version 0. Artifacts are filed by session, so
+            `two-days-ago` and a brand-new session show an empty list. In the explorer, expand
+            `artifacts/` and find the same file on disk; press ↻ if it is not listed yet.
           look: agent
         - text: >-
             Press **New Session** one more time and look at its State before you type anything.

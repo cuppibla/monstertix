@@ -1,6 +1,8 @@
 The queue is 14,203 people long and drains in forty minutes. Chapter 3 left the agent able to choose a show and nothing else; it cannot hold a place in a line, and the obvious way to make it wait is a loop that keeps a process alive to achieve nothing, dies with the terminal, and cannot be resumed. This section replaces the wait with a pause: the run stops, the stop is written to the session store, and the process is free to go.
 
 :::exercise id="run"
+:::figure src="/docs-img/08-01-flow1.png" caption="What the Events list looks like when the run parks: pick_show finishes with a plan, queue_up puts the ticket in state, then adk_request_input, and nothing after it. The run is waiting for a signal, not running."
+:::
 :::
 
 :::task
@@ -32,6 +34,9 @@ Look at the four pieces of work and ask of each: is there a judgement in it?
 `root_agent = nightly` in `agent.py`, so this graph is what `adk web` runs. The agent you talked to in chapter 3 is not gone; the judgement it did is now one node, with a schema on its output so the function after it gets a `Plan` rather than prose.
 
 ### Where the pause comes from
+
+:::figure src="/docs-img/06-02-aync.png" caption="join_queue returns as soon as the ticket is issued, and the work is not done: your turn comes forty minutes later. A plain tool call cannot represent that gap; the pause can."
+:::
 
 :::code path="agent/concert/nightly.py" highlight="^def check_front|^\s+return RequestInput\(|interrupt_id=QUEUE_WAIT|^QUEUE_WAIT = "
 :::

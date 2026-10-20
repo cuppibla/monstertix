@@ -1,12 +1,17 @@
 The run is parked and the agent process is about to die. Decide first what dies with it: the ticket, the plan, the place in the queue, the paused run, the conversation. Then kill it, bring it back, and continue the same task, not a new one.
 
 :::exercise id="run"
+:::figure src="/docs-img/06-01-resume1.png" caption="The venue panel while the run is parked: the agent is in line, the number is moving, and nothing of yours is running. Safe to kill."
+:::
 :::
 
 :::task
 :::
 
 ## Key code: what a dead process takes with it
+
+:::figure src="/docs-img/06-02-timeline.png" caption="The same ticket, across a process that died: the run parks, the queue keeps draining on the venue's side, the process is killed and restarted, the session is reloaded from sessions.db, and the next check finds the same ticket further up the line."
+:::
 
 Here is the prediction, answered.
 

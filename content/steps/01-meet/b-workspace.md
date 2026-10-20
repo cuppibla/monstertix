@@ -82,6 +82,9 @@ The full install, with every failure mode, is in `docs/PRE-WORK.md`.
 
 ## Key code
 
+:::figure src="/docs-img/01-02-tool.png" caption="The agent graph, from the icon beside the app name in the ADK web UI: concert, and its three tools."
+:::
+
 The code viewer above opened `agent/concert/agent.py`. The agent is the bottom
 of the file:
 

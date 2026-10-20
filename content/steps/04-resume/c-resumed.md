@@ -15,6 +15,9 @@ The resume input is a user event, but it is not a message. It answers an interru
 
 ### What `App` and `ResumabilityConfig` do
 
+:::figure src="/docs-img/06-02-intro.png" caption="What resumability adds: the run can stop at join_queue, the session store keeps where it was, and a later wake-up starts back from there instead of from the top."
+:::
+
 :::code path="agent/concert/agent.py" highlight="^app = App\(|resumability_config=ResumabilityConfig\(is_resumable=True\)"
 :::
 

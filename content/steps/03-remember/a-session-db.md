@@ -68,6 +68,9 @@ adk web agent --port 8000 \
 
 Without the first flag, ADK keeps sessions in memory and throws them away when the process stops. With it, the service writes every event into SQLite as it happens, and SQLite does not care whether the process that wrote it is still alive. That is the whole reason `two-days-ago` is still in the dropdown: a file outlived a process.
 
+:::figure src="/content-images/adk-storage.svg" caption="adk web, its two flags, and where each one writes: sessions.db with its four tables, and the artifacts/ folder, filed by app, user and session."
+:::
+
 ### How a conversation becomes rows
 
 Look at your query's output again. Five tables, and two do the work:

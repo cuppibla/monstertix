@@ -7,6 +7,9 @@ and watch it fail, so that the real fix in the next section lands.
 
 ## What one run is
 
+:::figure src="/docs-img/step2-overview.png" caption="One invocation: the model decides, ADK calls your Python, the result goes back, the model replies. The model never runs your code; it asks. Nothing in that loop can start the next one."
+:::
+
 When you press Enter in the ADK web UI, three things take part, and only one
 of them is the agent:
 

@@ -7,6 +7,8 @@ storage that outlives any one process, and a clock somebody else runs.
 What has to change to get there — and, more to the point, what does not?
 
 :::exercise id="run"
+:::figure src="/docs-img/overview.png" caption="Where each piece lands: the Runner and the graph in one Cloud Run service, sessions in Cloud SQL, memory and artifacts in Cloud Storage, the venue on its own Cloud Run service, and Cloud Scheduler as the clock."
+:::
 ## Local and cloud, side by side
 
 | | On your laptop | On Cloud Run |
