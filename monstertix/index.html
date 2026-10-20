@@ -508,9 +508,7 @@ document.getElementById("taskSid").textContent = SESSION;
 bubble("Hi Userx — I book concert tickets. I know what you have booked before, "
      + "so tell me what you want and I'll take it from there, including the waiting.",
      "agent");
-// preventScroll: framed in the workbench, a plain focus() drags the whole page
-// down to this box on every load.
-box.focus({ preventScroll: true });
+box.focus();
 </script>
 </body>
 </html>

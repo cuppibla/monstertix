@@ -1,18 +1,26 @@
-"""The agent's hands: search the tour, look at seats, write down who is coming.
+"""The agent's hands — and now one of them spends money.
 
-Each tool here writes to a different place, and the places have different
-lifetimes:
+Each tool writes to a different place, with a different lifetime:
 
     get_seatmap       temp:seatmap        this invocation only
                       an artifact file    kept by the Artifact Service
     note_companion    user:prefs          every session for this user
+    purchase          last_order          this session, and the venue's books
 
-The memory file is the fourth place — see memory.py. Nothing here waits in a
-queue or spends money yet.
+purchase is the one that matters here. Two things about it:
+
+  It carries an Idempotency-Key derived from the session and the request, so a
+  retry of the SAME purchase produces the SAME key and the venue hands back the
+  original order instead of selling the seats again.
+
+  It retries exactly once, itself, when the venue answers 5xx. "The response
+  never arrived" is not the same as "the order was never created", and the
+  key is what makes the retry safe.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 
@@ -115,3 +123,51 @@ def note_companion(name: str, constraint: str, tool_context: ToolContext) -> dic
     prefs[name] = constraint
     tool_context.state["user:prefs"] = prefs
     return {"companions": prefs}
+
+
+def purchase(
+    event_id: str, section: str, seats: int, tool_context: ToolContext
+) -> dict:
+    """Buy seats. Spends real money.
+
+    Args:
+        event_id: The show to buy for, e.g. "ms-ams-01".
+        section: Section letter — "A" lower bowl, "B" upper bowl, "C" general.
+        seats: How many seats.
+
+    Returns:
+        The order, with how many attempts it took and the idempotency key
+        used — or an error explaining why it did not go through.
+    """
+    # Derived from the session and the request, so a retry of the SAME purchase
+    # produces the SAME key. The venue recognises it and returns the original
+    # order instead of buying a second time. A random uuid here would be a key
+    # in name only.
+    key = hashlib.sha256(
+        f"{tool_context.session.id}:{event_id}:{section}:{seats}".encode()
+    ).hexdigest()[:24]
+
+    payload = {
+        "event_id": event_id,
+        "section": section,
+        "seats": seats,
+        "queue_ticket": tool_context.state.get("queue_ticket"),
+        "payment_ref": tool_context.state.get("user:payment_ref", "tok_workshop"),
+    }
+
+    # One retry, same key, only on a server-side failure. A 409 (sold out,
+    # still in the queue) is an answer, not a failure — retrying it would just
+    # ask the same question twice.
+    attempts = 0
+    result: dict = {}
+    while attempts < 2:
+        attempts += 1
+        result = venue.post("/purchase", payload, headers={"Idempotency-Key": key})
+        if not (result.get("error") and int(result.get("status") or 0) >= 500):
+            break
+        print(f"  [purchase]    venue answered {result.get('status')} — retrying with the same key")
+
+    result = {**result, "attempts": attempts, "idempotency_key": key}
+    if not result.get("error"):
+        tool_context.state["last_order"] = result.get("id")
+    return result
