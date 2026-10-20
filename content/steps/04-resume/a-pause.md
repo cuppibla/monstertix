@@ -1,4 +1,30 @@
-The queue is 14,203 people long and drains in forty minutes. Chapter 3 left the agent able to choose a show and nothing else; it cannot hold a place in a line, and the obvious way to make it wait is a loop that keeps a process alive to achieve nothing, dies with the terminal, and cannot be resumed. This section replaces the wait with a pause: the run stops, the stop is written to the session store, and the process is free to go.
+The queue is 14,203 people long and drains in forty minutes. The obvious way
+to wait is a loop that keeps a process alive to achieve nothing, dies with the
+laptop, and cannot be picked up again. This chapter replaces the wait with a
+pause.
+
+:::note
+**What this chapter teaches.** One thing: a forty-minute wait does not need a
+living process. Three sentences, one per section:
+
+1. The run **stops itself** and writes down where it stopped and which ticket
+   it holds. That is what `ResumabilityConfig` records. (4a)
+2. So the process can **die**. Kill it: nothing is lost, because everything
+   that mattered was already on disk, and the place in line is the venue's.
+   (4b)
+3. Later, something **wakes it**: you, a clock, chapter 6's scheduler. It
+   continues from where it stopped: finished steps are not repeated, and the
+   only thing it does again is ask the venue whether it is at the front. (4c)
+
+| Section | The question it answers |
+|---|---|
+| 4a · Stop | How does a run stop without a process waiting? |
+| 4b · Kill | What dies with the process? |
+| 4c · Resume | When it is woken, what runs again, and what must never run again? |
+
+You press nothing to pause. One message starts the task, and the task stops
+itself.
+:::
 
 :::exercise id="run"
 :::figure src="/docs-img/08-01-flow1.png" caption="What the Events list looks like when the run parks: pick_show finishes with a plan, queue_up puts the ticket in state, then adk_request_input, and nothing after it. The run is waiting for a signal, not running."
@@ -8,7 +34,27 @@ The queue is 14,203 people long and drains in forty minutes. Chapter 3 left the 
 :::task
 :::
 
-## Key code: a graph, with the agent as one node
+## Key code: the run stops itself at `check_front`
+
+:::figure src="/docs-img/06-02-aync.png" caption="join_queue returns as soon as the ticket is issued, and the work is not done: your turn comes forty minutes later. A plain tool call cannot represent that gap; the pause can."
+:::
+
+:::code path="agent/concert/nightly.py" highlight="^def check_front|^\s+return RequestInput\(|interrupt_id=QUEUE_WAIT|^QUEUE_WAIT = "
+:::
+
+`check_front` asks the venue `GET /queue/<ticket>`. If `ready` is false it returns `RequestInput(interrupt_id="queue:wait", message="Still in the queue at #N. Wake me again and I will check.")`. That is ADK's **interrupt**: the graph stops where it stands, the invocation is written to the session store with that interrupt open, and the run ends. Nothing loops, nothing sleeps, nothing holds a connection. The `adk_request_input` event you found is that interrupt, rendered.
+
+The interrupt id is a constant on purpose. Whoever wakes this run later, the task card, the MonsterTix server, a scheduler in chapter 6, answers `queue:wait` and can tell from the prefix that it is a queue wait and not a question for a person.
+
+### Why the agent is now a graph
+
+The agent is no longer one `Agent` with tools; it is a `Workflow`, five
+nodes in a row, and the agent from chapter 3 is one of them. The reason is
+the pause. A pause has to happen at a known place, with a known name, so that
+whoever wakes the run later knows what they are answering. `check_front` is
+that place. In a chat agent the model decides what to call next; in a graph
+the edges decide, and "join the queue once, then check the front" is a rule,
+not a judgement. Read the graph once; you do not need to edit it.
 
 :::figure src="/docs-img/08-02-workflow.png" caption="Functions for rules, an agent for judgement"
 :::
@@ -32,18 +78,6 @@ Look at the four pieces of work and ask of each: is there a judgement in it?
 :::
 
 `root_agent = nightly` in `agent.py`, so this graph is what `adk web` runs. The agent you talked to in chapter 3 is not gone; the judgement it did is now one node, with a schema on its output so the function after it gets a `Plan` rather than prose.
-
-### Where the pause comes from
-
-:::figure src="/docs-img/06-02-aync.png" caption="join_queue returns as soon as the ticket is issued, and the work is not done: your turn comes forty minutes later. A plain tool call cannot represent that gap; the pause can."
-:::
-
-:::code path="agent/concert/nightly.py" highlight="^def check_front|^\s+return RequestInput\(|interrupt_id=QUEUE_WAIT|^QUEUE_WAIT = "
-:::
-
-`check_front` asks the venue `GET /queue/<ticket>`. If `ready` is false it returns `RequestInput(interrupt_id="queue:wait", message="Still in the queue at #N. Wake me again and I will check.")`. That is ADK's **interrupt**: the graph stops where it stands, the invocation is written to the session store with that interrupt open, and the run ends. Nothing loops, nothing sleeps, nothing holds a connection. The `adk_request_input` event you found is that interrupt, rendered.
-
-The interrupt id is a constant on purpose. Whoever wakes this run later, the task card, the MonsterTix server, a scheduler in chapter 6, answers `queue:wait` and can tell from the prefix that it is a queue wait and not a question for a person.
 
 ### Where the ticket went
 

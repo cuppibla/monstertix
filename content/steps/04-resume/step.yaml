@@ -9,8 +9,8 @@ summary: >-
   front of the queue and ready to buy. Nothing is bought yet.
 parts:
 - id: a
-  label: Pause
-  headline: Turn waiting into a pause
+  label: Stop
+  headline: The run stops itself, and writes down where
   body: a-pause.md
   exercises:
     run:
@@ -94,8 +94,8 @@ parts:
       Two tickets means two runs joined the queue, usually from a second message in the chat box.
       Load chapter 4 again (it resets the venue) and send the message once, in a new session.
 - id: b
-  label: Restart
-  headline: Kill it, then continue
+  label: Kill
+  headline: Nothing dies with the process
   body: b-restart.md
   exercises:
     run:
@@ -165,15 +165,15 @@ parts:
       `ready_to_buy` only runs after `check_front` finds the ticket at the front. SKIP THE WAIT,
       then Resume current task.
 - id: c
-  label: Resumed
-  headline: Read what actually resumed
+  label: Resume
+  headline: What runs again, and what must not
   body: c-resumed.md
   exercises:
     read:
       title: Find the resume in the events
       intro: >-
-        No new actions. Read the session you just finished and separate three things that look
-        alike: what was persisted, what the resume sent in, and which nodes actually executed.
+        No new actions. Read the session you just finished: on each Resume, which nodes ran
+        again, and which did not.
       apps: [agent]
       tasks:
       - kind: files
