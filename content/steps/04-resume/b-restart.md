@@ -1,7 +1,8 @@
 **Can this ticket task survive a program crash?** The task has already paused
 and saved its progress. Now deliberately kill the ADK process, start it again,
-and resume the same task. Success means the same session and ticket survive,
-without choosing the show or joining the queue again.
+and resume the same task. Here you check that the same session and ticket
+survive. In 4c you will check the execution records to see which work was
+reused and which node ran again.
 
 After **kill -9**, expect the ADK service to show **killed** and stop accepting
 messages. The venue page stays open and the ticket keeps moving: it belongs
@@ -9,6 +10,22 @@ to the ticket seller, which is a separate service. Then use the remaining
 buttons below to start ADK, move the ticket to the front, and resume.
 
 :::exercise id="run"
+### What to compare, and what it shows
+
+Before killing the process, note the **Ticket** and **Session** IDs shown
+beside Resume. After resuming, compare these four things:
+
+| Look at | Before the crash → after Resume | What you learned |
+|---|---|---|
+| **Ticket** `q_…` beside Resume | Same ID | The original place in line survived |
+| **Session** beside Resume | Same ID | You continued the original session |
+| ADK’s final reply | Waiting in the queue → **Ready to buy**, then **concert_nightly completed!** | The restarted process continued the saved task to this chapter’s endpoint |
+| **Tickets bought**, on the Venue panel | 0 → 0 | This chapter resumes the queue task; purchasing comes in Chapter 5 |
+
+**A completed workflow and a disabled Resume button are the expected result.**
+You are done with 4b. These checks show the outcome; 4c inspects the node
+records to establish how it resumed.
+
 :::figure src="/docs-img/06-01-resume1.png" example="true" caption="The ticket stays in the venue's queue while the agent task is paused. Killing the ADK process does not remove the ticket."
 :::
 :::

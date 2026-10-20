@@ -1,5 +1,5 @@
-The Server is ready to receive a request. **The Clock waits ten seconds,
-then sends it this preset message:**
+In 2b, you sent a question from the left-hand MonsterTix chat and saw a reply.
+**Now the Clock waits ten seconds and sends the same question for you:**
 
 > Check whether the Amsterdam shows still have seats, and tell me what you find.
 
@@ -15,8 +15,10 @@ Click Fire once → Clock waits 10 seconds → sends the preset question
 
 **This is a scheduled request, not just a connection to the Server.**
 The ten seconds are the delay before sending; the agent needs additional
-time to finish its answer. Read that answer in **MonsterTix → log**.
-It is not automatically added to the chat conversation visible on the left.
+time to finish its answer. Watch **Clock sent** and **Agent replied** below
+the button: these show the actual request and response. The Clock uses a
+separate `wake-…` session, so the left chat keeps your manual conversation.
+To inspect the tool calls, open **MonsterTix → log**.
 
 ## The Clock code: wait, then send
 
@@ -62,9 +64,9 @@ finished normally. The Server stays running, ready for another request.
 :::
 
 :::key
-In 2a, you started the run by sending a message. Here, the Clock sends the
-message at the scheduled time. The Server runs the same agent in both cases
-of a manual `/wake` call and a Clock `/wake` call.
+In 2b, you sent the question through the chat page. In 2c, the Clock sent
+the same question after a delay. Both called `/wake` on the same Server,
+which ran the same agent. Only the caller changed.
 :::
 
 :::note

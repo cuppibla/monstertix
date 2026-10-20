@@ -5,15 +5,16 @@ To check again later, something must send another request.
 MonsterTix** starts a Python web service. It loads the agent and prepares a
 Runner, then waits. Starting the server alone does not check any tickets.
 
-**The Clock sends the request later.** In 2c, it will wait ten seconds, then
-send the server a question about Amsterdam seats. You keep the same agent
+**First, send a question yourself.** Use the MonsterTix chat on the left
+and watch its reply. **In 2c, the Clock will send the same question** after
+a ten-second delay. You keep the same agent
 and instruction throughout.
 
 ## Where the left-hand page fits
 
 The left-hand **MonsterTix** tab is a chat page served by this server.
-Sending a message there calls the server's `/wake` endpoint. That is an
-optional manual test; you do not need to type there for the Clock experiment.
+Sending a message there calls the server's `/wake` endpoint. This is your
+next action: send the question in the exercise below and wait for its reply.
 The **Venue panel** is the simulated ticket seller: it shows seat availability
 and the activity caused by tool calls.
 
@@ -93,10 +94,6 @@ Read that last line. The server is running and the agent is loaded, and
 nothing is happening. Being callable and being called are two different
 things.
 
-:::optional title="Call it manually before using the clock" minutes=2 needs="MonsterTix running"
-:::exercise id="manual"
-:::
-
 The MonsterTix page is a chat window that posts to `/wake`;
 when you press send, the log shows the Runner at work:
 
@@ -108,13 +105,14 @@ when you press send, the log shows the Runner at work:
                   Dome …
 ```
 
-Same agent, same tools; now your server owns the Runner. The next section uses a clock as the caller.
-:::
+Same agent, same tools; now your server owns the Runner. You sent this
+request through the chat page. In 2c, the Clock sends the same question.
 :::
 
 :::key
 The Server receives a question and uses its Runner to run the agent.
-Starting it only makes it ready. The Clock in the next section sends the question.
+Starting it only makes it ready. Sending a chat message starts a run.
+The Clock in the next section will send the same question automatically.
 :::
 
 :::optional title="The page, and the other routes" minutes=5 needs="MonsterTix running"
@@ -142,11 +140,12 @@ Chapter 6.
 :::
 
 :::checkpoint
-**MonsterTix is running and the agent is loaded. Will it check the Amsterdam
-show on its own now?**
+**You sent a question and got an answer. Will the Server check the Amsterdam
+shows again on its own now?**
 :::answer
 No. A server that listens is only half of it. Nothing happens on `/wake`
-until something sends a request there. The optional manual call uses the page; otherwise no call has arrived yet. The agent cannot send that request to itself: once
+until something sends another request there. Your chat message started one
+run; it did not schedule the next one. The agent cannot send that request to itself: once
 the Runner returns, no code of its own is running. The missing half is the
 next section.
 :::

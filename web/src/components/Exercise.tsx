@@ -8,6 +8,7 @@ import { Inline } from "./Inline";
 import { StageBar } from "./StageBar";
 import { Turn } from "./Turn";
 import { PurchaseProgress } from "./PurchaseProgress";
+import { useBench } from "../lib/bench";
 
 /* A block of things to do, placed in the reading with :::exercise id="…".
    Its tasks come from step.yaml: prepare (load a step's code), files (the
@@ -23,15 +24,25 @@ import { PurchaseProgress } from "./PurchaseProgress";
 export function TaskView({ task, slug, color, prepared, compact = false }: {
   task: Task; slug: string; color: string; prepared: boolean; compact?: boolean;
 }) {
+  const { setDrawerOpen } = useBench();
   if (compact && task.kind === "files") {
     return (
-      <p className="mt-3 text-[0.78rem]" style={{ color: "var(--fg-faint)" }}>
-        {t("The code viewer for this card is in the reading, behind the drawer.")}
-      </p>
+      <div className="mt-3">
+        <p className="text-[0.78rem]" style={{ color: "var(--fg-faint)" }}>
+          {task.lessonAnchor ? "Read the workflow code, then return here to match it to the Events."
+            : t("The code viewer for this card is in the reading, behind the drawer.")}
+        </p>
+        <button type="button" className="btn mt-2" onClick={() => {
+          setDrawerOpen(false);
+          requestAnimationFrame(() => document.getElementById(task.lessonAnchor ?? `task-${slug}-${task.id}`)
+            ?.scrollIntoView({block: "start"}));
+        }}>{task.lessonAnchor ? "Read workflow code and explanation →" : "Show code viewer →"}</button>
+      </div>
     );
   }
   return (
-    <div className={compact ? "mt-3" : "mt-5"}>
+    <div id={compact ? undefined : `task-${slug}-${task.id}`} className={compact ? "mt-3" : "mt-5"}
+      style={{scrollMarginTop: 160}}>
       {task.title && <h3 className="text-[0.98rem] font-semibold">{task.title}</h3>}
       {task.kind === "prepare" && task.step !== undefined && (
         <div className="mt-2">

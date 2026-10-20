@@ -1,56 +1,159 @@
-You killed the process and resumed the task once. It kept the same ticket and
-reached **ready to buy**, with no order. The next question is what actually
-ran again: did the agent choose the show again, or continue the saved plan?
+You have two seats planned and one queue ticket. In 4b you killed the
+process, restarted it, and pressed Resume. The result said **Ready to buy**.
+Here is how the code made that happen. This page is a read-through of that
+finished run; there is nothing new to submit.
+
+<div id="resume-code" style="scroll-margin-top: 160px"></div>
+
+## 1 · This is the workflow you just ran
+
+In `agent/concert/nightly.py`, these edges define the order:
+
+```python
+nightly = Workflow(
+    name="concert_nightly",
+    description="The unattended presale run: choose, queue, wait, reach the front.",
+    edges=[(START, open_the_night, pick_show, queue_up, check_front, ready_to_buy)],
+)
+```
+
+`pick_show` chooses the show and seats. `queue_up` gets a ticket.
+`check_front` checks that ticket's position. Only when that check succeeds
+can the workflow reach `ready_to_buy`. The graph decides this order.
+
+In `agent/concert/agent.py`, the app runs this workflow and enables resuming:
+
+```python
+app = App(
+    name="concert",
+    root_agent=nightly,
+    # Other app settings omitted here.
+    resumability_config=ResumabilityConfig(is_resumable=True),
+)
+```
+
+The Session Service writes its progress to `sessions.db`. The process may
+stop; the saved ticket, plan and pause record remain there.
+
+## 2 · This return is where the workflow pauses
+
+These are the relevant lines from `check_front`. The full file below also
+handles a missing ticket and writes logs; those branches are omitted here.
+
+```python
+QUEUE_WAIT = "queue:wait"
+
+@node(rerun_on_resume=True)
+def check_front(node_input, ctx: Context):
+    ticket = node_input.get("ticket") or ctx.state.get("queue_ticket") or ""
+    status = venue.get(f"/queue/{ticket}")
+
+    if not status.get("ready"):
+        return RequestInput(
+            interrupt_id=QUEUE_WAIT,
+            message=f"Still in the queue at #{status.get('position', 0):,}. "
+                    "Wake me again and I will check.",
+        )
+    return Event(output=node_input)
+```
+
+Read it in order: **ask the venue → not at the front → return RequestInput**.
+`RequestInput` is a named pause. Here its name is `queue:wait`.
+ADK saves it, and the current execution stops. It appears in Events as
+`⚡ adk_request_input`. There is no sleeping loop inside this function.
+
+## 3 · Resume answers that saved pause
+
+When you clicked **Resume current task**, the workbench sent a request to
+ADK's `POST /run`, using the **same session ID**. This is the relevant payload
+from `workbench/services/task.py`; app and user identifiers are omitted:
+
+```json
+{
+  "session_id": "<the same session>",
+  "new_message": {
+    "role": "user",
+    "parts": [{
+      "function_response": {
+        "id": "queue:wait",
+        "name": "adk_request_input",
+        "response": {"checked": true}
+      }
+    }]
+  }
+}
+```
+
+**The button submitted this for you.** That is the later
+`✓ adk_request_input` event you now see. It is why the old input box may
+already have disappeared: the request has been answered.
+
+Despite its name, `checked: true` means **“wake up and check again”** in this
+lab. It contains no queue position and proves nothing about seat availability.
+It is not a new “buy tickets” chat message, and it does not start a new session.
+
+## 4 · Why `rerun_on_resume=True` matters here
+
+ADK has received the answer to the pause. What should it do next?
+**`True` tells ADK to call `check_front` again, from the beginning of that
+function, with its previous input.** It does not continue on the line after
+`return RequestInput`, and it does not run every earlier node again.
+
+The important line executes again:
+
+```python
+status = venue.get(f"/queue/{ticket}")
+```
+
+That asks the venue for the **current** position of the **same** ticket.
+The resume signal did not contain that information; the venue does.
+
+| When the signal arrives | What the fresh queue check finds | What happens |
+|---|---|---|
+| The ticket is still in line | `ready: false` | Return `RequestInput` again; stay paused |
+| You already pressed SKIP THE WAIT | `ready: true` | Return the saved plan and ticket; run `ready_to_buy` |
+
+You did the second case in 4b. That is why you saw **Ready to buy** and
+**concert_nightly completed!**. There is no purchase node in this chapter,
+so no order is placed.
+
+`pick_show` and `queue_up` had already finished and saved their outputs.
+ADK reuses those outputs. It does not need another model decision or another
+queue ticket. You may see their saved outputs appear again in Events as the
+path is reconstructed; that does not mean their functions executed again.
+
+:::key
+A resume signal asks the task to continue. `rerun_on_resume=True` makes the
+paused queue-check function verify the real queue again before moving on.
+The saved outputs preserve the work that was already completed.
+:::
 
 :::exercise id="read"
 :::
 
-## The Session DB also holds the place to continue
-
-:::figure src="/docs-img/06-02-intro.png" caption="Resumability keeps the paused task in the session store. In our Workflow, the interrupted node is check_front; completed nodes already have outputs on record."
-:::
-
-:::code path="agent/concert/agent.py" highlight="^app = App\(|resumability_config=ResumabilityConfig\(is_resumable=True\)"
-:::
-
-`ResumabilityConfig(is_resumable=True)` lets ADK save and use the records
-needed to continue a paused invocation. The external caller sends an answer
-to `queue:wait` in the same session. That answer means **“check again”**;
-it does not itself mean the ticket is at the front.
-
-### Completed nodes and interrupted nodes are different
-
-:::code path="agent/concert/nightly.py" highlight="^@node\(rerun_on_resume=True\)|^@node\(rerun_on_resume=False\)|^pick_show = node\(picker, rerun_on_resume=False\)"
-:::
-
-The graph can traverse the earlier nodes again while rebuilding the path.
-Traversal is not proof that their functions ran. ADK checks their records:
-
-| Record | What ADK does | Our example |
-|---|---|---|
-| Finished, with an output | Reuses that output without calling the node again | `pick_show`, `queue_up` |
-| Paused on an answered interrupt; `rerun_on_resume=True` | Calls the node again with the answer available | `check_front` re-reads the queue |
-| Paused on an answered interrupt; `rerun_on_resume=False` | Uses the answer as the output without calling the node | Not the behavior we want for the queue check |
-| No completed execution yet | Runs the node | `ready_to_buy` after the queue clears |
-
-**The recorded output protects completed work.** The flag on `check_front`
-controls the interrupted work. With `True`, it asks the venue where this
-ticket is now. Without that check, `{"checked": true}` could be mistaken for
-having completed the wait.
-
-:::key
-Keep completed decisions. Re-check facts that may have changed. A resume is
-another request to continue the saved task, and can keep the same invocation id.
-:::
-
 :::checkpoint
-**If a clock wakes the task while it is still waiting, will it join the queue again?**
+**A Clock sends the resume signal too early. Will the workflow claim you are at the front?**
 :::answer
-No. `queue_up` already returned a ticket, so ADK reuses that output.
-`check_front` runs again, finds the ticket is not ready, and pauses again.
-Once it reaches the front, the same check lets `ready_to_buy` run. One ticket
-can therefore survive many wake-ups without keeping the process running.
+No. `check_front` runs again and asks the venue. If `ready` is false, it
+returns `RequestInput` again. The signal wakes the task; the queue check
+decides whether it may continue. `queue_up` keeps its completed output, so
+this does not join the queue again.
 :::
+:::
+
+:::optional title="What would False do at this pause?" minutes=2 needs="reading only"
+For a node paused on an interrupt that has now been answered,
+`rerun_on_resume=False` lets ADK use the answer as that node's output,
+without calling its function again. In this example the output would be
+`{"checked": true}` — not the plan and ticket, and not a fresh queue result.
+The following node expects that plan and ticket. This would break our flow
+and skip the check it relies on.
+
+False is useful when the answer really is the finished result the next node
+needs. Here the answer is only a request to check, so we use True.
+
+This flag is separate from reusing completed work: an earlier node with an
+output already on record is replayed from that record either way.
 :::
 
 :::optional title="Deep dive: records, crash gaps, and LRFT" minutes=8 needs="reading only"

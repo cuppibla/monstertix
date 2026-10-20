@@ -121,9 +121,9 @@ parts:
   body: b-server.md
   exercises:
     start:
-      title: Start the server; the clock will call it next
-      intro: Start MonsterTix to make the server ready. It receives questions and uses its Runner to run the
-        agent. Starting it does not check tickets. In the next section the Clock sends the question for you.
+      title: Send a question through your own server
+      intro: Start MonsterTix, then send the question below in its chat on the left. See the server run the
+        agent and return a reply. In 2c, the Clock will send this same question for you.
       apps:
       - monstertix
       - venue
@@ -132,10 +132,22 @@ parts:
         id: turn
         items:
         - text: Click **Start MonsterTix** if it is not already running. On the left, choose **MonsterTix →
-            log** and find *listening*. The server is ready to receive a request. You do not need to type into
-            its chat box.
+            log** and find *listening*. This means it is ready; it has not checked tickets yet.
           service: monstertix
           action: start
+        - text: 'Send this in the **MonsterTix chat on the left**. Click Copy below, paste into the bottom
+            **Ask it to book something…** box, then click the purple send arrow. Copy does not send it.
+            If the log is covering the chat, click **log** again to close it.'
+          say: Check whether the Amsterdam shows still have seats, and tell me what you find.
+          in: monstertix
+        - text: 'Wait for the answer in that same chat. You should see the Amsterdam shows and available
+            seats. Sending your message called the server, which ran the agent. **Tickets bought** stays 0.
+            To see the tool calls behind the answer, open **MonsterTix → log**.'
+          look: monstertix
+        - text: 'You sent this request yourself. Next, let the Clock send the same question after a delay.'
+          next:
+            to: /step/wake/c
+            label: Continue to 2c · let the Clock send it
       - kind: files
         id: files
         open: monstertix/server.py
@@ -146,34 +158,10 @@ parts:
           wake\(|async for event in runner\.run_async\(
         highlightLabel: The server builds one `Runner` at startup and runs the agent on each `POST /wake`.
           Nothing in this file knows what time it is.
-    manual:
-      title: Call the server yourself
-      optional: true
-      apps:
-      - monstertix
-      tasks:
-      - kind: turn
-        id: manual-call
-        items:
-        - text: 'On the **MonsterTix page**, say this. The page posts it to `/wake`; the Runner behind that
-            route does the rest.
-
-            '
-          say: Which Amsterdam show would you pick for me and Sam?
-          in: monstertix
-        - text: 'Read MonsterTix''s log: `woken · session …`, then `called recall`, `called search_events`,
-            then `said` and the agent''s answer. The same run the ADK web UI showed, now through your Runner.
-
-            '
-          look: monstertix
-        - text: 'Check the venue panel: the activity feed moved, **Tickets bought** did not. You asked for
-            an opinion, not a purchase.
-
-            '
-          look: venue
   expect:
   - MonsterTix is running. Its log says it is listening; starting the process alone does not start an agent
     invocation.
+  - After you paste the question and press Send, the left MonsterTix chat shows the agent’s reply.
   checks: []
 - id: c
   label: Clock
@@ -182,8 +170,9 @@ parts:
   exercises:
     fire:
       title: Schedule one ticket check
-      intro: No typing is needed. Click Fire once below. After ten seconds, the Clock sends the preset Amsterdam-seat
-        question to the Server. The Server runs the agent and returns its answer.
+      intro: In 2b you sent a question from the left chat. Now the Clock sends that same question directly
+        to the Server after ten seconds. Its question and reply appear below the button here, in a separate
+        Clock session. The left chat will not gain a new message. No typing is needed.
       apps:
       - monstertix
       - venue
@@ -197,12 +186,13 @@ parts:
           action: start
         - text: 'Click **Fire once, 10s from now**. The question is already in the code: “Check whether the
             Amsterdam shows still have seats, and tell me what you find.” Wait for **Request sent**, then **Check
-            complete** below. The ten seconds are the delay before sending; the answer takes additional time.'
+            complete** below. Read **Clock sent** and **Agent replied** under the button. The ten seconds are
+            the delay before sending; the answer takes additional time.'
           clock:
             in: 10
-        - text: To read the answer, open **MonsterTix → log** on the left. Find the latest `woken · session
-            wake-…`, the tool calls, and `said` with the answer. A Clock request creates its own session; its
-            answer is in this log, not automatically in the visible chat.
+        - text: Compare the **Agent replied** answer above with the manual reply from 2b. Both came from the same
+            Server and agent; this time the Clock sent the request. For the tool calls, open **MonsterTix →
+            log** and find the matching `wake-…` session.
           look: monstertix
       - kind: files
         id: files
@@ -230,7 +220,8 @@ parts:
       optional: true
   expect:
   - 'Clock status: waiting, then Request sent, then Check complete. The one-shot process exits after the response;
-    that is normal. Expand Clock log to see the actual request and completion lines.'
+    that is normal. Clock sent and Agent replied show this request’s actual question and answer.
+    The chat on the left keeps your manual conversation.'
   - 'MonsterTix log: `woken · session wake-…`, `called recall`, `called search_events`, `said …` with the Saturday
     show and its sections.'
   - 'Venue panel: new lines in **What the agent is doing**; **Tickets bought** still 0.'

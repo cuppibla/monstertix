@@ -32,20 +32,37 @@ places:
 | 2 | a one-line seat map summary | `get_seatmap`, into `temp:seatmap` | **nowhere**: stripped before the state is saved |
 | 3 | Sam cannot do weeknights | `note_companion`, two days ago | `user:prefs`, in session state, visible from every session of this user |
 
-The **State** tab is where you check the second and the third. `user:prefs`
-is there before you type anything; `temp:seatmap` is not there even though
-`get_seatmap` wrote it a moment ago:
+The **State** tab is where you check the second and the third. Stay in the
+**new session where you just sent the ticket request**, rather than `two-days-ago`. Expand
+`user:prefs`: it contains `Sam: "cannot do weeknights"`. `temp:seatmap` is
+absent even after `get_seatmap` ran; it was only a scratch value for that run.
+If you just pressed **New Session** and have not sent anything yet, ADK may
+show **State is empty**. Send the exercise’s first message, wait for the
+reply, then inspect State.
 
-:::figure src="/docs-img/04-01-newsession3.png" caption="The State tab of a fresh session: user:prefs is there, temp:seatmap is not. Your keys will differ a little from this earlier build; the shape is the same."
+:::figure src="/docs-img/04-current-newsession.png" caption="A new session in the current lab: user:prefs survives; the old session’s target_event_id and party_size do not carry over. A displayName may appear after you send a message."
 :::
 
-For comparison, this screenshot shows `two-days-ago`, a different session row. Its task-specific keys stay with that row; you do not need to switch sessions to continue:
+### If you opened `two-days-ago`
 
-:::figure src="/docs-img/04-02-oldsession1.png" caption="The session list: your new session and two-days-ago, side by side. Both are rows in the same sessions.db."
+These are the **three expected entries** in its State tab:
+
+| Entry | Value | What it means |
+|---|---|---|
+| `target_event_id` | `"ms-ams-01"` | The show selected in that old conversation |
+| `party_size` | `2` | The number of people in that old conversation |
+| `user:prefs` → `Sam` | `"cannot do weeknights"` | A preference shared by this user’s sessions |
+
+:::figure src="/docs-img/04-current-oldsession.png" caption="two-days-ago in the current lab: target_event_id, party_size and user:prefs. This is the expected State."
 :::
 
-:::figure src="/docs-img/04-02-oldsession2.png" caption="two-days-ago: target_event_id and party_size are plain keys, this session only. user:prefs is the same one your new session sees."
-:::
+You do not need to find `user:envelope` or `user:purchases_made`. Those were
+in an older version of the lab. Purchase authorization is collected in
+Chapter 5, for the task you are starting then.
+
+Return to the **new session from this exercise** before continuing to 3b.
+The comparison is the point: its State has Sam’s shared preference, while
+the old conversation keeps its own show and party size.
 :::
 
 ## Key code: the service writes, the database keeps
@@ -102,7 +119,12 @@ That last row is the one you saw with your own eyes: `get_seatmap` set `temp:sea
 
 ### A new session is not a deleted session
 
-**New Session** inserts a new row in `sessions`. It does not touch `two-days-ago`. Both rows share `app_name="concert"` and `user_id="user"`, which is why both see the same `user_states` row and why your new session knew about Sam before you typed anything. What it did not inherit is `target_event_id` and `party_size`: those sit in the other session's `state` column, and no part of ADK copies them across.
+**New Session** starts a separate conversation; in the current ADK Web UI,
+its database row is created when you send the first message. It does not
+touch `two-days-ago`. Both rows share `app_name="concert"` and `user_id="user"`,
+so both read the same `user_states` row. Your first run can therefore read
+Sam’s preference without you stating it again. The new session does not
+inherit `target_event_id` or `party_size`: those stay in the old row.
 
 Reset is the other thing. Loading a chapter deletes `sessions.db` and rebuilds it. That is why `two-days-ago` is always exactly two days old: `use-solution.sh` runs `seed/session.py`, which writes those twelve turns with back-dated timestamps, the `user:prefs` entry, the two session-scoped keys, and one genuine compaction record. It is a planted past, and it is planted in the same tables the agent writes to.
 

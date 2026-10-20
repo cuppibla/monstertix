@@ -90,6 +90,8 @@ export type Task = {
   scope?: "all" | "venue";
   // files
   open?: string;
+  /** Reading anchor to return to from the ADK drawer before inspecting this file. */
+  lessonAnchor?: string;
   start?: string;
   stage?: number;
   compare?: number;

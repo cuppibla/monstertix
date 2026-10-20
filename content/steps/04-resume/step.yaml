@@ -27,6 +27,7 @@ parts:
       - kind: files
         id: files
         open: agent/concert/nightly.py
+        lessonAnchor: workflow-code
         stage: 4
         compare: 3
         only:
@@ -113,8 +114,9 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: Click **kill -9** below to simulate an ADK process crash. Expect its status to change to **killed**;
-            ADK cannot accept messages until restarted. The task was already saved at the pause.
+        - text: 'Before the crash, note the **Ticket** and **Session** IDs shown beside Resume in step 5
+            below; these identify your current task. Then click **kill -9** to simulate an ADK process crash.
+            Expect **killed**: ADK cannot accept messages until restarted. The task was already saved at the pause.'
           service: agent
           action: kill
         - text: 'Check the **Venue panel** on the left. The same `q_…` ticket is still there and its position
@@ -131,9 +133,16 @@ parts:
           press: SKIP THE WAIT
           venue: advance-queue
         - text: 'Click **Resume current task** below. Expect **Complete: the task reached the front** and **Tickets
-            bought = 0**. Compare the ticket shown below with the one from before the crash. The button then
-            disables because this chapter’s task has finished.'
+            bought = 0**. Compare **Ticket** and **Session** below with the IDs you noted before the crash:
+            both should match. In ADK, the final reply says **Ready to buy**, followed by **concert_nightly
+            completed!** This means the saved task continued after the crash. The disabled button is expected;
+            there is no queue wait left to resume.'
           resume: task
+        - text: 'You have shown that the task can survive a process crash. The same ticket alone does not tell
+            you which nodes reran. Continue to 4c to compare their execution records; do not send another message.'
+          next:
+            to: /step/resume/c
+            label: Continue to 4c · see what ran again
   expect:
   - 'After kill -9: the venue panel keeps counting down the same `q_…` ticket. The ADK web UI drawer says *killed*
     until you start it again.'
@@ -170,29 +179,29 @@ parts:
       Resume current task.'
 - id: c
   label: Resume
-  headline: What runs again, and what must not
+  headline: Follow the code from pause to resume
   body: c-resumed.md
   exercises:
     read:
-      title: Find the resume in the events
+      title: Match the code to your finished run
       needs: The session from 4b, after its one Resume.
-      intro: The task has finished. This section only inspects its saved Events; no more messages or human-input
-        answers are needed.
+      intro: You already resumed in 4b. Read the code explanation on this page, then match its pause, response
+        and result to the Events. The Resume button has already answered the pause; this section needs no input.
       apps:
       - agent
       tasks:
       - kind: files
         id: files
         open: agent/concert/nightly.py
+        lessonAnchor: resume-code
         stage: 4
         compare: 3
         only:
         - agent/concert/
         highlight: ^@node\(rerun_on_resume=True\)|^@node\(rerun_on_resume=False\)|^pick_show = node\(picker,
           rerun_on_resume=False\)|interrupt_id=QUEUE_WAIT|status = venue\.get\(f"/queue/\{ticket\}"\)|resumability_config=ResumabilityConfig\(is_resumable=True\)
-        highlightLabel: Completed nodes reuse their recorded outputs. For the node stopped on an answered interrupt,
-          rerun_on_resume=True runs its function again; False uses the answer as its output. check_front must
-          run again to read the live queue.
+        highlightLabel: Follow nightly → check_front → RequestInput. Resume answers queue:wait; True runs
+          check_front again so venue.get reads the current queue position. Finished nodes keep their saved outputs.
       - kind: turn
         id: turn
         items:
@@ -201,15 +210,15 @@ parts:
             paused view.
           look: agent
           inspectTask: true
-        - text: 'In **Events**, scroll past the old `adk_request_input` call. That input box belongs to the
-            earlier pause; **do not fill it in**. Find its later tool response containing `checked: true`,
-            then the final **Ready to buy** result. The Resume button submitted that response for you.'
-        - text: 'In **State**, confirm the same `queue_ticket` and `ready_to_buy: true`. This is the result:
-            the task continued after the crash, using the saved ticket. The explanation below shows why completed
-            nodes reuse their outputs while `check_front` runs again.'
+        - text: 'In **Events**, find the pair: **⚡ adk_request_input** is the earlier pause; **✓ adk_request_input**
+            is the response already submitted by Resume. Click the **✓** response and inspect `checked: true`
+            in **Info**. You are reading a completed exchange, so having no input box is normal.'
+        - text: 'Below that response, find **Ready to buy** and **concert_nightly completed!**. In **State**,
+            check the same `queue_ticket` and `ready_to_buy: true`. The signal woke check_front; its new
+            venue query found the ticket at the front, allowing the next node to finish.'
   expect:
-  - 'Run 1 ends on `adk_request_input` (`queue:wait`). Run 2 begins with its response, `{"checked": true}`,
-    which the Resume button sent.'
+  - 'The first execution stops at ⚡ adk_request_input. Resume adds ✓ adk_request_input with {"checked": true}.
+    This continues the saved invocation; it is not a second ticket request.'
   - In run 2 the only node with a fresh execution before `ready_to_buy` is `check_front`; its event carries
     the new position. The log has one `[check_front]` line per resume and one `[queue_up]` line in total.
   - 'Session state after it all: one `queue_ticket`, the same `plan`, and `ready_to_buy: true`.'

@@ -18,6 +18,7 @@ route the scheduler reaches, with the same empty body.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -63,21 +64,27 @@ def main() -> None:
         time.sleep(args.delay)
         while True:
             log(f"firing → POST {route}")
+            log("request " + json.dumps(body, ensure_ascii=False))
             try:
                 response = client.post(f"{TRIGGER_URL}{route}", json=body)
                 if response.status_code >= 400:
                     log(f"trigger returned {response.status_code}")
-                elif args.trigger and not (response.json() or {}).get("woke"):
-                    # The server answered, but found nothing a timer may resume.
-                    # That is a result, not a failure — a person's question
-                    # stays a person's question at 3am.
-                    log(f"nothing resumed: {(response.json() or {}).get('reason')}")
                 else:
-                    log("done. the agent ran and you were not involved.")
+                    result = response.json()
+                    if not isinstance(result, dict):
+                        raise ValueError("expected an object")
+                    # Keep the actual reply, so the lab can show what this
+                    # request did without mixing it into the browser's chat.
+                    log("response " + json.dumps(result, ensure_ascii=False))
+                    if args.trigger and not result.get("woke"):
+                        # A person's question stays a person's question at 3am.
+                        log(f"nothing resumed: {result.get('reason')}")
+                    else:
+                        log("done. the agent ran and you were not involved.")
             except httpx.HTTPError:
                 log(f"nothing listening at {TRIGGER_URL} — is the server running?")
             except ValueError:
-                log("done. the agent ran and you were not involved.")
+                log("invalid response: the server did not return a JSON object")
             if not args.every:
                 return
             time.sleep(args.every)

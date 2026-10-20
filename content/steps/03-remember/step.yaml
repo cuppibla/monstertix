@@ -35,17 +35,18 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: In the ADK web UI, press **New Session** in the top bar. Note the session id it gives you; it is
-            a fresh row.
+        - text: In the ADK web UI, press **New Session** in the top bar. It may say **NEW SESSION** and
+            **State is empty** until you send the first message below. After that message, note the new session ID.
           look: agent
         - text: One message. It should call `recall`, `search_events` and `get_seatmap`, and answer with the **Saturday**
             show without asking which night, how many seats, or where you like to sit. Everything it needs is in
             memory.
           say: Get me and Sam two tickets to the Amsterdam show.
           in: agent
-        - text: 'In **Events**, open the recall response and the get_seatmap call. Then inspect **State**: user:prefs
-            contains Sam’s rule; temp:seatmap is absent because it was only for this invocation. Keep this session
-            for the next section.'
+        - text: 'In this **new session**, open the recall response and the get_seatmap call in **Events**.
+            Then open **State** and expand `user:prefs`: Sam says `cannot do weeknights`. `temp:seatmap` is
+            absent because it was only for this invocation. If you opened `two-days-ago`, its extra
+            `target_event_id` and `party_size` are expected; return to your new session for the next section.'
           look: agent
     sql:
       title: Read the Session DB with SQL

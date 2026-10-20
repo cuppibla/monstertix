@@ -30,6 +30,25 @@ The current agent run ends, while the ADK server may remain running.
 restart, advance the queue, and resume the task.
 :::
 
+<div id="workflow-code" style="scroll-margin-top: 160px"></div>
+
+## The workflow before you run it
+
+This is the actual graph definition in `agent/concert/nightly.py`:
+
+```python
+nightly = Workflow(
+    name="concert_nightly",
+    description="The unattended presale run: choose, queue, wait, reach the front.",
+    edges=[(START, open_the_night, pick_show, queue_up, check_front, ready_to_buy)],
+)
+```
+
+Read it left to right: prepare the request, choose the show, join the queue,
+check your position, then report ready. **`check_front` is the pause point.**
+It returns `RequestInput` while the ticket is still waiting. You will see
+that pause in ADK below; 4c connects its code to the Resume button.
+
 :::exercise id="run"
 :::figure src="/docs-img/08-01-flow1.png" example="true" caption="What the Events list looks like when the run parks: pick_show finishes with a plan, queue_up puts the ticket in state, then adk_request_input, and nothing after it. The run is waiting for a signal, not running."
 :::
