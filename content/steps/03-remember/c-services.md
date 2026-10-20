@@ -1,6 +1,12 @@
 You now have three stores and five lifetimes in play, and the next two chapters add a queue ticket, a plan and an authorization on top. Before any of that, put the whole picture in one place: which service holds what, how long each thing lasts, what a new session carries over, and what a summary does to a conversation when it gets long.
 
 :::exercise id="run"
+The **Artifacts** tab is the third store. The seat map `get_seatmap` saved is
+listed there by name, with a version number, and the same bytes are in the
+explorer under `artifacts/`:
+
+:::figure src="/docs-img/04-01-newsession4.png" caption="The Artifacts tab: seatmap_ms-ams-01.json, version 0. The file never entered the prompt; the model got a one-line summary and a filename."
+:::
 :::
 
 ## Key code: three services, one table
@@ -41,6 +47,10 @@ ADK assigns the meaning of the prefixes. You do not declare them anywhere; the f
 
 **Read that table as being about the containers, not what is in them.** `memory/userx.md` survives everything and only ever holds what `remember()` chose to put there. Nothing writes your current conversation into it.
 
+:::warn
+**You will meet `temp:` again in chapter 4.** ADK's own `ResumabilityConfig` docstring says: *"Any temporary / in-memory state will be lost upon resumption."* Your agent is about to join a queue, stop running for forty minutes, and be woken up. `temp:` will not survive that; `user:` state, plain session state and the memory file will.
+:::
+
 ### This session versus a new one
 
 You did the comparison. Here is what it will look like once chapters 4 and 5 have added their keys:
@@ -67,6 +77,9 @@ One condition on the **yes** rows: the identity has to match. `user:prefs` is ke
 Long sessions get summarized. `App(events_compaction_config=EventsCompactionConfig(compaction_interval=3, overlap_size=1, …))` tells ADK: after every three user-initiated invocations, replace the older events the model is shown with a summary written by another model call, starting one turn earlier than strictly needed so no question is cut from its answer. Three is tuned so it fires in a workshop; production values are much larger.
 
 :::code path="agent/concert/agent.py" highlight="^app = App\(|events_compaction_config=EventsCompactionConfig\(|compaction_interval=|overlap_size=|summarizer=LlmEventSummarizer"
+:::
+
+:::figure src="/docs-img/04-02-oldsession2.png" caption="two-days-ago in the Events list: row #5, marked N, is where a summary stands in for the turns before it. That row is the compaction record."
 :::
 
 Here is what it does, on the `two-days-ago` session, labelled. **Sample 1 · the raw turns** (the first four events, as written):

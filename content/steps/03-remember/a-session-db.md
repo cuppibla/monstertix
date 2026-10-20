@@ -1,6 +1,52 @@
 Two days ago somebody talked to this agent about Amsterdam, Sam, and the upper bowl, then closed the laptop. The process that held that conversation is long gone, and the ADK web UI still lists it. So where is it? What exactly got written, by whom, and what does a brand-new session start with? This section is you finding the answer on disk rather than taking it on trust.
 
+## What this chapter adds
+
+:::figure src="/docs-img/04-02-impl.png" caption="The tools this chapter adds, and where each one writes: note_companion into user:prefs, get_seatmap into a file and a temp: key, recall and remember into the memory file."
+:::
+
+| File | What changed |
+|---|---|
+| `tools.py` | `note_companion` is new: it writes a fact into `user:prefs`. `get_seatmap` used to return the whole seat map; now it saves the full map to a file and keeps a one-line summary in `temp:seatmap` |
+| `memory.py` | new. Our own memory store, a Markdown file, with `recall` and `remember` over it |
+| `agent.py` | three more tools in the list, and the instruction tells the agent to use them |
+
+Three writers, and each lands in a different store. The agent is started with
+two flags it did not have before, and they are what make any of it persist:
+
+| Flag | What it is |
+|---|---|
+| `--session_service_uri` | where every message, tool call and state change is written, as rows. A SQLite file here |
+| `--artifact_service_uri` | where files the agent saves go. A folder here |
+
+Without them ADK keeps everything in memory and throws it away when the
+process stops.
+
 :::exercise id="run"
+After your one message, three things went into storage, in three different
+places:
+
+| | What was stored | Which tool did it | Where it went |
+|---|---|---|---|
+| 1 | the full seat map, 6 KB | `get_seatmap`, via `save_artifact` | the artifact service: a file under `artifacts/` |
+| 2 | a one-line seat map summary | `get_seatmap`, into `temp:seatmap` | **nowhere**: stripped before the state is saved |
+| 3 | Sam cannot do weeknights | `note_companion`, two days ago | `user:prefs`, in session state, visible from every session of this user |
+
+The **State** tab is where you check the second and the third. `user:prefs`
+is there before you type anything; `temp:seatmap` is not there even though
+`get_seatmap` wrote it a moment ago:
+
+:::figure src="/docs-img/04-01-newsession3.png" caption="The State tab of a fresh session: user:prefs is there, temp:seatmap is not. Your keys will differ a little from this earlier build; the shape is the same."
+:::
+
+Then the session dropdown. `two-days-ago` is a different row, with two keys
+yours does not have:
+
+:::figure src="/docs-img/04-02-oldsession1.png" caption="The session list: your new session and two-days-ago, side by side. Both are rows in the same sessions.db."
+:::
+
+:::figure src="/docs-img/04-02-oldsession2.png" caption="two-days-ago: target_event_id and party_size are plain keys, this session only. user:prefs is the same one your new session sees."
+:::
 :::
 
 ## Key code: the service writes, the database keeps
@@ -40,7 +86,12 @@ user_states   app_name · user_id · state · update_time
 |---|---|---|
 | `party_size` | `sessions.state`, on that one row | that session only |
 | `user:prefs` | `user_states`, keyed by app + user | every session of this user |
+| `app:tour_id` | `app_states`, keyed by app | every user of the app |
 | `temp:seatmap` | nowhere | this invocation, then gone |
+
+ADK assigns the meaning of the prefixes. You do not declare them anywhere;
+the first part of the key name decides where the value goes and how long it
+lasts.
 
 That last row is the one you saw with your own eyes: `get_seatmap` set `temp:seatmap` a second before the State tab was drawn, and the tab did not show it. ADK strips `temp:` keys before persisting. `temp:` is a scratchpad for one run, not a place to keep anything.
 
