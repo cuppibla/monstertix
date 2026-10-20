@@ -504,12 +504,7 @@ echo ""
 # the port answers before it prints the link, so a tab opened on that link
 # never lands on "Unable to forward your request to a backend".
 if ./workbench.sh start; then
-  if [ -n "${CLOUD_SHELL:-}" ]; then
-    echo "  4800 is not in Web Preview's quick list: pick Change port and type 4800."
-    echo "  If a tab says 'Unable to forward your request to a backend', the"
-    echo "  workbench was not up yet — reload it once ./workbench.sh has printed its link."
-    echo ""
-  fi
+  :
 else
   echo "  ⚠ the workbench did not start. The codelab works without it."
   echo "    Try again with:  ./workbench.sh"

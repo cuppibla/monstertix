@@ -93,6 +93,8 @@ start() {
     echo "  Open it: Web Preview (top right) → Change port → $PORT"
     echo "           ($PORT is not in the quick list; type it. This one port frames"
     echo "            the ADK web UI, the venue panel and MonsterTix.)"
+    echo "  A tab that says 'Unable to forward your request to a backend' was opened"
+    echo "  before this line was printed — reload it."
   else
     echo "  Open it: http://localhost:$PORT"
   fi
