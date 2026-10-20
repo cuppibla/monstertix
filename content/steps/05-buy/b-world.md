@@ -7,7 +7,8 @@ be present. Who notices?
 The buyer is told to act on the plan without reading the seat map first. That
 is deliberate: the thing that catches a stale plan is a guard in code, not the
 model's caution. This section makes the plan stale on cue and watches the
-guard refuse.
+guard refuse. You also arm one more fault here, for the next section to read
+from the same run: the venue will commit the order and then lose the reply.
 
 :::exercise id="run"
 :::figure src="/docs-img/07-01-bug1.png" caption="SELL THE GOOD SEATS on the venue panel: section A goes to zero while the run is parked. The agent's saved seat map is now a lie, and nothing told it."

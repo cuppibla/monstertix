@@ -7,6 +7,28 @@ in words they confirmed. This section puts that conversation at the front of
 the graph, before anything is searched or queued — and keeps it in a place
 the next session will not inherit.
 
+:::note
+**What this chapter teaches.** One purchase, three locks, and all three have
+to hold at the same moment:
+
+1. **Permission.** A person agreed a limit for *this* task, in their own words,
+   and confirmed it. Memory of what they spent before does not count. (5a)
+2. **Guard.** In the instant before money moves, code re-reads the world. A
+   plan made forty minutes ago is not trusted; a refusal with a reason is the
+   normal outcome, not a bug. (5b)
+3. **Once.** If the response is lost and something retries, the retry cannot
+   buy twice. The same operation carries the same key. (5c)
+
+| Section | The question it answers |
+|---|---|
+| 5a · Permission | Who said the agent may spend, and where is that stored? |
+| 5b · Guard | What stops it acting on a stale plan? |
+| 5c · Once | What stops a retry from buying twice? |
+
+One run covers all three: you agree the limit in 5a, break the world and wake
+the run in 5b, and read the retry off the records in 5c.
+:::
+
 :::exercise id="run"
 :::figure src="/docs-img/09-02-workflow.png" caption="Chapter 4's graph with agree_budget in front: it asks, reads the number back, and stores the ask and the budget before anything is searched or queued. Two RequestInput pauses: one for a person, one for the queue."
 :::
@@ -76,6 +98,24 @@ Two interrupts, not one, and the second is the point. The first answer is what
 somebody said. The second is what they agreed to. Only after the second does
 `authorization` go into state with `confirmed: True`.
 
+:::code path="agent/concert/budget.py" highlight="^SESSION STATE, NOT|^AUTH_KEY = "
+:::
+
+**Session state, not `user:`.** Open the State tab: the key is `authorization`
+with no prefix. A budget is agreed for one booking. Put it under `user:` and it
+silently governs every run this person ever makes, and they are never asked
+again. So every new session starts with no authorization and has to agree one.
+That is the honest trade: a limit that has to be re-agreed, against a limit
+that quietly outlives the conversation it came from.
+
+:::note
+**There is no default and no unattended path.** If nobody answers, the run
+stays parked on `budget:ask` and nothing is bought. `fence.py` refuses any
+`purchase` with `no_authorization` when `budget.load()` returns `None`. That is
+the correct outcome, not a failure to handle.
+:::
+
+:::optional title="Going deeper: what budget.py keeps" minutes=5 needs="nothing — reading only"
 :::code path="agent/concert/budget.py" highlight="^def parse\(|^def make\(|^def load\(|^def allows\("
 :::
 
@@ -92,22 +132,6 @@ The sentence is what you show the person back and what the buyer agent reads.
 The numbers are what `fence.py` compares a live price against in the instant
 before money moves. A model is good at reading a sentence and bad at being the
 last line of defence, so the code checks the numbers.
-
-:::code path="agent/concert/budget.py" highlight="^SESSION STATE, NOT|^AUTH_KEY = "
-:::
-
-**Session state, not `user:`.** Open the State tab: the key is `authorization`
-with no prefix. A budget is agreed for one booking. Put it under `user:` and it
-silently governs every run this person ever makes, and they are never asked
-again. So every new session starts with no authorization and has to agree one.
-That is the honest trade: a limit that has to be re-agreed, against a limit
-that quietly outlives the conversation it came from.
-
-:::note
-**There is no default and no unattended path.** If nobody answers, the run
-stays parked on `budget:ask` and nothing is bought. `fence.py` refuses any
-`purchase` with `no_authorization` when `budget.load()` returns `None`. That is
-the correct outcome, not a failure to handle.
 :::
 
 :::key

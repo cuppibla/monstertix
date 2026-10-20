@@ -1,25 +1,16 @@
-The venue takes the order, writes it, charges the card — and the response
+The venue takes the order, writes it, charges the card, and the response
 never arrives. The caller sees a 503. Was the order created? It cannot tell.
 "Submitted successfully" and "received a success response" are two different
 facts, and a network only promises the second when it promises anything.
 
 So something retries. If the retry is a second purchase, the person wakes up
-to two pairs of tickets. This section breaks the response on purpose and
-watches the retry come back with the *same* order.
+to two pairs of tickets. In 5b you armed exactly this failure before waking
+the run; the order went through once. This section is why.
 
 :::exercise id="run"
 :::figure src="/docs-img/07-01-solution2.png" caption="The venue charges the order and then the reply fails. The retry carries the same idempotency key, so the venue answers with the order it already has: last_order is set once."
 :::
 :::figure src="/docs-img/09-01-hitl5.png" caption="One order, exactly as intended: 2× section A · 420, and section A's count down by two. However many times the purchase was retried."
-:::
-## The reset, and what it keeps
-
-**Reset the venue** above clears orders, queue and inventory, and nothing
-else. The chapter 5 code stays in `agent/`, `sessions.db` keeps every session,
-and the memory file is untouched. The new session is what makes the
-authorization fresh: it is session state, so it has to be agreed again.
-
-:::code path="agent/concert/tools.py" highlight="^def purchase\(|key = hashlib\.sha256\(|headers=\{\x22Idempotency-Key\x22: key\}|while attempts < 2|retrying with the same key|\x22attempts\x22: attempts, \x22idempotency_key\x22: key"
 :::
 :::
 
@@ -50,8 +41,7 @@ ask the same question twice. The response the model finally sees carries
 `attempts` and `idempotency_key`, so the Events tab tells you what happened
 without reading a log.
 
-## The venue's half
-
+:::optional title="Going deeper: the venue's half, and running it on a clean venue" minutes=8 needs="chapter 5 loaded"
 :::file path="venue/app.py" label="Show venue/app.py — /purchase and /admin/hang-once"
 :::
 
@@ -74,6 +64,13 @@ written, and *then* the response fails. The retry arrives with the same key,
 branch 1 finds the row, and the venue returns it with `duplicate: true`. One
 order. The activity feed shows both lines: `COMMITTED, then failed the
 response (hang-once)`, then `duplicate suppressed — returned ord_…`.
+
+**To run it on its own.** Reset the venue only (the bar in 5a, *Reset the
+venue*), start a **new session** in the ADK web UI, send the same request and
+agree the same limit, press **BREAK THE NEXT PURCHASE**, then **SKIP THE
+WAIT** and **Resume current task**. Same records, with nothing else in the
+run.
+:::
 
 :::note
 **Who else retries.** Here the tool retries. In production the retry may come
