@@ -1,7 +1,10 @@
+# Pinned to 2.9.x: by 2.12, `adk web --url_prefix` mounts the routes
+# under the prefix, and the workbench proxy strips it, so the framed dev UI 404s.
+#
 # [db] pulls in sqlalchemy, which DatabaseSessionService needs. Without it,
 # --session_service_uri=sqlite:///... fails the first time a session is written
 # — which is the whole of Chapter 3.
-google-adk[db]>=2.6.2
+google-adk[db]>=2.9.2,<2.10
 
 # ADK drives SQLAlchemy through its asyncio extension, so SQLite needs an ASYNC
 # driver. Without this the URL must be sqlite+aiosqlite:// and the engine still
