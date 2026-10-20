@@ -27,16 +27,33 @@ function neighbours(course: CoursePayload, slug: string, partId: string) {
 
 const href = (e: { slug: string; part: string }) => (e.part ? `/step/${e.slug}/${e.part}` : `/step/${e.slug}`);
 
+/* Links to the old nine steps still arrive (bookmarks, the codelab's text).
+   Each lands on the section of the new course that teaches the same thing. */
+const MOVED: Record<string, string> = {
+  story: "meet/a",
+  asleep: "wake/a",
+  trigger: "wake/b",
+  context: "remember/a",
+  compaction: "remember/c",
+  resumption: "resume/a",
+  workflow: "resume/a",
+  human: "buy/a",
+  cloud: "cloud/a",
+};
+
 function StepPage({ course, lang, onLang }: { course: CoursePayload; lang: string; onLang: (l: string) => void }) {
   const { slug = "", part: partParam } = useParams();
   const navigate = useNavigate();
   const { railOpen, setVenueOnLeft } = useBench();
   const [step, setStep] = useState<StepFull | null>(null);
+  const known = course.steps.some((s) => s.slug === slug);
+  const moved = !known && MOVED[slug] && course.steps.some((s) => s.slug === MOVED[slug].split("/")[0]) ? MOVED[slug] : "";
 
   useEffect(() => {
+    if (moved) return;
     api.step(slug, lang).then(setStep).catch(() => setStep(null));
     window.scrollTo({ top: 0 });
-  }, [slug, partParam, lang]);
+  }, [slug, partParam, lang, moved]);
 
   const part = step?.parts.find((p) => p.id === (partParam ?? "")) ?? step?.parts[0] ?? null;
   const partId = part?.id ?? "";
@@ -63,6 +80,8 @@ function StepPage({ course, lang, onLang }: { course: CoursePayload; lang: strin
     return () => window.removeEventListener("keydown", onKey);
   }, [next, previous, navigate]);
 
+  if (moved) return <Navigate to={`/step/${moved}`} replace />;
+
   return (
     <>
       <TopNav course={course.course} steps={course.steps} activeSlug={slug} activePart={partId}
@@ -72,8 +91,14 @@ function StepPage({ course, lang, onLang }: { course: CoursePayload; lang: strin
 
         <main className="bench__main">
           <div className="mx-auto max-w-[56rem] pb-24">
-            {!step || !part ? (
-              <div className="py-28 text-center text-sm" style={{ color: "var(--fg-faint)" }}>{t("loading…")}</div>
+            {!step || !part || step.error ? (
+              <div className="py-28 text-center text-sm" style={{ color: "var(--fg-faint)" }}>
+                {step?.error ? (
+                  <pre className="log mx-auto max-w-2xl whitespace-pre-wrap rounded-lg p-4 text-left" style={{ color: "var(--bad)" }}>
+                    {t("This step's step.yaml does not parse:")}{"\n"}{step.error}
+                  </pre>
+                ) : t("loading…")}
+              </div>
             ) : (
               <>
                 <div className="px-1 pt-12 pb-3 text-center">

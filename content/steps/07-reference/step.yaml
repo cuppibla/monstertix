@@ -1,0 +1,64 @@
+title: Reference
+kicker: Reference
+appendix: true
+color: teal
+stage: 6
+summary: >
+  Off the main line. Experiments that take longer than the chapter budget
+  allows, each with its time and what it assumes; and every message the course
+  types, in one place.
+parts:
+  - id: a
+    label: Optional
+    headline: Optional experiments
+    body: a-optional.md
+    exercises:
+      compaction:
+        title: Read what compaction wrote
+        intro: >
+          Needs the ADK web UI running on the chapter 3 code, and a session
+          with at least three turns in it.
+        apps: []
+        tasks:
+          - kind: turn
+            id: turn
+            items:
+              - text: The summaries ADK wrote for the session you used most recently. Nothing in the dev UI shows these; this reads them out of the API.
+                run: ./show-compaction.sh
+    checks: []
+
+  - id: b
+    label: Prompts
+    headline: Reference prompts
+    body: b-prompts.md
+    exercises:
+      messages:
+        title: Every message the course types
+        intro: >
+          The same scenario from the first chapter to the last. Copy from
+          here when a page's own button is out of reach. Where a message
+          answers an `adk_request_input` event in the ADK web UI, it goes in
+          that event's box, never the chat box.
+        apps: []
+        tasks:
+          - kind: turn
+            id: turn
+            items:
+              - text: '**The first question** (2A, ADK web UI) — one ordinary turn: tools run, an answer comes back, and nothing runs afterwards.'
+                say: Which Amsterdam shows still have seats for me and Sam?
+              - text: '**The prompt lab** (2A) — the same request, worded to ask the agent to keep watching. Watch the log afterwards: no wording starts a run.'
+                say: Keep an eye on the Amsterdam Saturday show for me and Sam, and tell me the moment anything changes.
+              - text: '**The memory question** (3B, ADK web UI) — the picker reads `recall()` and takes the Saturday because Sam bails on weeknights.'
+                say: Which Amsterdam show would you pick for me and Sam?
+              - text: '**A fact to keep** (3B, ADK web UI) — a deliberate `remember()`; the line lands in `memory/userx.md`.'
+                say: Remember this for next time — we always want aisle seats.
+              - text: '**The request** (3A, 4A, 5A, 5C, 6B) — the first message of every task.'
+                say: Get me and Sam two tickets to the Amsterdam show.
+              - text: '**The authorization** (5A, 5C, 6B) — the answer to *how many tickets, and the most to pay for each?* In the ADK web UI: the event''s box. On the MonsterTix page: the chat.'
+                say: Two tickets, up to $250 each.
+              - text: '**The confirmation** (5A, 5C, 6B) — the answer to *Have I got that right?* Same box as the question.'
+                say: "Yes, that's right."
+              - text: '**The clock''s message** (2B) — what `python -m monstertix.clock` posts to `/wake` by default. Nothing is bought; it is an availability check.'
+                say: Check whether the Amsterdam shows still have seats, and tell me what you find.
+              - text: '**The queue wait** is never typed. **Resume current task** (or the MonsterTix **Resume** button, or the scheduler) answers `queue:wait` with `{"checked": true}`. A message in the chat box while the run is parked starts a second invocation.'
+    checks: []

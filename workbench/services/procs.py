@@ -43,28 +43,29 @@ def _python(*args: str) -> list[str]:
 
 
 def _agent_argv() -> list[str]:
-    from workbench.services import stage   # late: stage imports this module
-
-    argv = ["adk", "web", "agent", "--port", "8000", "--allow_origins", "*"]
-    loaded = stage.current()
-    # From step 4 on, the codelab passes both service URIs, and every restart
-    # after that uses the same flags.
-    if loaded is not None and loaded >= 4:
-        argv += [f"--session_service_uri=sqlite+aiosqlite:///{config.ROOT}/sessions.db",
-                 f"--artifact_service_uri=file://{config.ROOT}/artifacts"]
+    # Both service URIs, always: every chapter's sessions live in the one
+    # sessions.db at the root, which is what the checks, the task summary and
+    # MonsterTix read, and every restart uses the same flags.
+    argv = ["adk", "web", "agent", "--port", "8000", "--allow_origins", "*",
+            f"--session_service_uri=sqlite+aiosqlite:///{config.ROOT}/sessions.db",
+            f"--artifact_service_uri=file://{config.ROOT}/artifacts"]
     # The dev UI is framed through the workbench at /svc/agent/, and this is
     # how it learns where its own API is from there.
     argv += ["--url_prefix", "/svc/agent"]
     return argv
 
 
-CLOCK = {"delay": 10.0, "every": 0.0}
+CLOCK = {"delay": 10.0, "every": 0.0, "trigger": False}
 
 
 def _clock_argv() -> list[str]:
     argv = _python("-m", "monstertix.clock", "--in", f"{CLOCK['delay']:g}")
     if CLOCK["every"]:
         argv += ["--every", f"{CLOCK['every']:g}"]
+    # Chapter 6's rehearsal: post to /trigger/wake, the scheduler's entrance,
+    # which resumes a waiting task and never starts a conversation.
+    if CLOCK["trigger"]:
+        argv += ["--trigger"]
     return argv
 
 
@@ -202,8 +203,10 @@ def _start(name: str) -> dict[str, Any]:
     env = {**config.workshop_env(), **service.extra_env()}
     if name == "venue":
         env["VENUE_URL"] = "http://127.0.0.1:8080"
-    child = subprocess.Popen(argv, cwd=config.ROOT, stdout=log, stderr=subprocess.STDOUT,
-                             env=env, start_new_session=True)
+    # No terminal on stdin: a child that would ask a question (adk's
+    # telemetry prompt on a tty) must not sit waiting for an answer nobody can give.
+    child = subprocess.Popen(argv, cwd=config.ROOT, stdin=subprocess.DEVNULL, stdout=log,
+                             stderr=subprocess.STDOUT, env=env, start_new_session=True)
     _children[name] = child
     _pidfile(name).write_text(str(child.pid))
     # Kept after it stops: checks ask "since the agent last started".

@@ -1,4 +1,7 @@
 title: MonsterTix
-subtitle: Everything you need to build long-running agents on Google Cloud
-tagline: An agent that waits in a queue, survives being killed, and buys tickets at 3am inside limits you set.
+subtitle: Build a long-running agent on Google Cloud, one task from start to finish
+tagline: >
+  Get two tickets to the Amsterdam show for you and Sam. The agent waits in a
+  14,000-person queue, survives being killed, buys inside the limit you confirm,
+  and finishes from a cloud timer while you sleep.
 credit: Brought to you by Google Cloud Americas' Advocacy team

@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException
 
 from workbench import config
-from workbench.services import checks, content, jobs, procs, prompts, stage, workspace
+from workbench.services import checks, content, jobs, procs, prompts, stage, task, workspace
 
 router = APIRouter(prefix="/api")
 
@@ -63,6 +63,7 @@ async def service_action(name: str, action: str, settings: dict = Body(default={
     if name == "clock" and action in ("start", "restart"):
         procs.CLOCK["delay"] = float(settings.get("delay", procs.CLOCK["delay"]))
         procs.CLOCK["every"] = float(settings.get("every", 0) or 0)
+        procs.CLOCK["trigger"] = bool(settings.get("trigger", False))
     if action == "start":
         return await asyncio.to_thread(procs.start, name)
     if action == "stop":
@@ -93,8 +94,27 @@ def stage_changes(since: int, to: int) -> dict[str, Any]:
 
 @router.post("/stage")
 async def stage_load(step: int = Body(..., embed=True),
-                     resetVenue: bool = Body(True, embed=True)) -> dict[str, Any]:
-    return await asyncio.to_thread(stage.load, step, resetVenue)
+                     resetVenue: bool = Body(True, embed=True),
+                     scope: str = Body("all", embed=True)) -> dict[str, Any]:
+    """Load a step's code. `scope: "venue"` only resets the venue: the code,
+    the sessions, the memory file and every process stay as they are."""
+    if scope not in ("all", "venue"):
+        raise HTTPException(400, "scope is 'all' or 'venue'")
+    return await asyncio.to_thread(stage.load, step, resetVenue, scope)
+
+
+# ── the current task ─────────────────────────────────────────────────────────
+
+@router.get("/task")
+async def task_current(session_id: str | None = None) -> dict[str, Any]:
+    """The newest session, read from the store: paused on what, ticket, authorization, order."""
+    return await asyncio.to_thread(task.current, session_id)
+
+
+@router.post("/task/resume")
+async def task_resume(payload: dict = Body(default={})) -> dict[str, Any]:
+    """Answer the current task's queue wait. A wait on a person is refused."""
+    return await asyncio.to_thread(task.resume, payload.get("session_id") or None)
 
 
 # ── the venue's buttons ──────────────────────────────────────────────────────

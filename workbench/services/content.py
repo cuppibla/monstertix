@@ -47,13 +47,26 @@ def merge(base: Any, over: Any) -> Any:
     return over if over not in (None, "") else base
 
 
+def _load(path: Path) -> tuple[dict[str, Any], str]:
+    """A YAML file as a dict, and the parse error if it has one. A typo in
+    one step.yaml must not take the whole course down: the page gets the
+    error text where the step would be, and every other step still loads."""
+    if not path.exists():
+        return {}, ""
+    try:
+        data = yaml.safe_load(path.read_text())
+    except yaml.YAMLError as error:
+        return {}, f"{path.relative_to(config.ROOT)}: {error}"
+    return (data if isinstance(data, dict) else {}), ""
+
+
 def _yaml(path: Path, lang: str) -> dict[str, Any]:
-    data = yaml.safe_load(path.read_text()) if path.exists() else {}
-    data = data or {}
+    data, _ = _load(path)
     if lang != config.DEFAULT_LANG:
         overlay = path.with_name(f"{path.stem}.{lang}{path.suffix}")
-        if overlay.exists():
-            data = merge(data, yaml.safe_load(overlay.read_text()) or {})
+        over, _ = _load(overlay)
+        if over:
+            data = merge(data, over)
     return data
 
 
@@ -92,6 +105,7 @@ def _folders() -> list[tuple[int, str, Path]]:
 
 def _step(order: int, slug: str, folder: Path, lang: str, full: bool) -> dict[str, Any]:
     meta = _yaml(folder / "step.yaml", lang)
+    _, error = _load(folder / "step.yaml")
     parts = []
     for index, part in enumerate(meta.get("parts") or [{"body": "step.md"}]):
         entry = {"id": str(part.get("id", "")), "label": part.get("label", ""),
@@ -114,20 +128,35 @@ def _step(order: int, slug: str, folder: Path, lang: str, full: bool) -> dict[st
         "slug": meta.get("slug", slug),
         "order": order,
         "title": meta.get("title", slug),
-        "kicker": meta.get("kicker", f"Step {order}"),
+        "kicker": meta.get("kicker", f"Chapter {order}"),
         "minutes": int(meta.get("minutes", 10)),
         "color": meta.get("color", "cyan"),
         "summary": meta.get("summary", ""),
         "venue": bool(meta.get("venue")),
         "stage": meta.get("stage"),
+        # Listed after the chapters, as reference, not as a step of the course.
+        "appendix": bool(meta.get("appendix")),
+        # A step.yaml that does not parse: the page shows this instead of the step.
+        "error": error,
         "parts": parts,
     }
 
 
+# Probes that look only at the newest session, or at what happened since it
+# started, so an old order or an old tool call cannot pass a check.
+SESSION_FLAGS = ("--current", "--since-session")
+SESSION_QUESTIONS = ("authorization", "guard", "retry", "resumed", "task")
+
+
 def _public(check: dict[str, Any]) -> dict[str, Any]:
     """A check as the page sees it: the probe stays on the server."""
+    probe = str(check.get("probe", ""))
+    words = probe.split()
+    session_only = any(flag in words for flag in SESSION_FLAGS) or (
+        len(words) >= 4 and words[1:3] == ["-m", "workbench.probe"] and words[3] in SESSION_QUESTIONS)
     return {"id": check["id"], "label": check.get("label", ""), "hint": check.get("hint", ""),
-            "expected": check.get("expect") == "fail", "note": check.get("note", "")}
+            "expected": check.get("expect") == "fail", "note": check.get("note", ""),
+            "scope": "session" if session_only else ""}
 
 
 def all_steps(lang: str) -> list[dict[str, Any]]:
@@ -136,7 +165,7 @@ def all_steps(lang: str) -> list[dict[str, Any]]:
 
 def step(slug: str, lang: str) -> dict[str, Any] | None:
     for order, name, folder in _folders():
-        meta = yaml.safe_load((folder / "step.yaml").read_text()) or {}
+        meta, _ = _load(folder / "step.yaml")
         if meta.get("slug", name) == slug:
             return _step(order, name, folder, lang, full=True)
     return None
@@ -145,7 +174,7 @@ def step(slug: str, lang: str) -> dict[str, Any] | None:
 def _raw(slug: str) -> dict[str, Any] | None:
     """The English step.yaml: where commands and probes are looked up."""
     for _, name, folder in _folders():
-        meta = yaml.safe_load((folder / "step.yaml").read_text()) or {}
+        meta, _ = _load(folder / "step.yaml")
         if meta.get("slug", name) == slug:
             return meta
     return None

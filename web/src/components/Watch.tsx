@@ -15,6 +15,10 @@ function Row({ card, result }: { card: CheckCard; result?: CheckResult }) {
   const amber = card.expected && passed;
   const mark = !result ? "" : amber ? "!" : passed ? "✓" : "";
   const fill = !result ? "transparent" : amber ? "var(--amber)" : passed ? "var(--ok)" : "transparent";
+  // A check that looks only at the newest session, or at what happened since
+  // it started, so an old order or an old tool call cannot make it pass.
+  const sessionOnly = card.scope === "session"
+    || /(^|\s)--current(\s|$)|(^|\s)--since-session(\s|$)/.test(result?.command ?? "");
 
   return (
     <li className="border-b last:border-b-0" style={{ borderColor: "var(--hairline)" }}>
@@ -32,6 +36,13 @@ function Row({ card, result }: { card: CheckCard; result?: CheckResult }) {
               </span>
             )}
             <Inline text={card.label} />
+            {sessionOnly && (
+              <span className="ml-1.5 rounded px-1 py-[1px] align-middle text-[0.6rem] font-semibold uppercase tracking-wide"
+                    title={t("Counts only the newest session, not what earlier runs did.")}
+                    style={{ color: "var(--fg-faint)", border: "1px solid var(--hairline-strong)" }}>
+                {t("this session only")}
+              </span>
+            )}
           </span>
           {amber && card.note && (
             <span className="mt-1 block text-[0.82rem]" style={{ color: "var(--fg-faint)" }}><Inline text={card.note} /></span>

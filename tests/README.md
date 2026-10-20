@@ -1,7 +1,7 @@
-# Step tests
+# Chapter tests
 
 One folder per solution, mirroring `solutions/`. Every test answers the same
-question: **does this step still do what the codelab says it does?**
+question: **does this chapter still do what the course says it does?**
 
 Not "does the code import" — that is table stakes. These check that if a student
 types what the instructions tell them to type, they see what the instructions
@@ -10,41 +10,41 @@ show them.
 ## Run them
 
 ```bash
-cd ~/longrunningag
+cd monstertix
 ./tests/run.sh
 ```
 
 That is the whole thing. It sources `set_env.sh`, starts a scratch venue on
-**:8099** if one is not already there, and runs the fast suite. Takes about a
-second.
+**:8099** if one is not already there, and runs the fast suite. Takes a few
+seconds.
 
 ```
-36 passed, 10 skipped in 1.01s
+62 passed, 7 skipped in 3.4s
 ```
 
-The 10 skipped are the live tests. To run those too:
+The skipped ones are the live tests. To run those too:
 
 ```bash
 ./tests/run.sh --live
 ```
 
 Several minutes, and it spends tokens — every one of them drives the real agent
-against the real model.
+or the real graph against the real model.
 
-### One step at a time
+### One chapter at a time
 
 ```bash
-./tests/run.sh tests/step9_the_budget
-./tests/run.sh --live tests/step9_the_budget
+./tests/run.sh tests/step5_buy
+./tests/run.sh --live tests/step5_buy
 ```
 
 Everything except `--live` is passed straight to `pytest`, so `-k`, `-x` and
 `-v` all work. If you pass only flags, `tests/` is added for you:
 
 ```bash
-./tests/run.sh -k budget -v
+./tests/run.sh -k guard -v
 ./tests/run.sh -x                    # stop at the first failure
-./tests/run.sh --live -k "new_session"
+./tests/run.sh --live -k "sell_out"
 ```
 
 ### Without the runner
@@ -69,73 +69,64 @@ listening, rather than failing with a connection error.
 
 | | What it checks | Cost |
 |---|---|---|
-| **structural** | the wiring the step depends on — `join_queue` really is a `LongRunningFunctionTool`, compaction has both required fields, `queue_up` really has `rerun_on_resume=False`, the budget really is session-scoped | milliseconds, no model |
-| **behavioural** | drives the agent or the graph through the beats the codelab walks through, and checks the venue afterwards | a minute or more each, real tokens |
+| **structural** | the wiring the chapter depends on — `queue_up` really has `rerun_on_resume=False`, compaction names its own model, the guard refuses in the documented order, the purchase retries once with the same key | milliseconds, no model |
+| **behavioural** | drives the agent or the graph through the beats the chapter walks through, and checks the venue afterwards | a minute or more each, real tokens |
 
 Behavioural tests carry `@needs_model` and are skipped unless
 `WORKSHOP_TEST_LIVE=1` is set. That split is deliberate: the fast suite is meant
 to be usable as a pre-flight check before a run-through, so it has to stay fast
 enough that you actually run it.
 
-## What each step asserts
+## What each chapter asserts
 
-| Step | The claim being held in place |
+| Chapter | The claim being held in place |
 |---|---|
-| 1 bootstrap | two read-only tools, and no way to buy or wait |
-| 2 asleep | it *can* buy now, and still does nothing, because nothing calls it — and nothing in it knows what time it is |
-| 4 open the box | a real `BaseMemoryService`, `recall` is `async`, and `get_seatmap` writes both `temp:` state and an artifact |
-| 5 compaction | compaction is on with both fields, and `budget_split` has `include_contents="none"` |
-| 6 pull the plug | `join_queue` is long-running, the app is resumable |
-| 7 old news | a `before_tool_callback` guards only `purchase`; the idempotency key deduplicates **and** its absence really does buy twice |
-| 8 the workflow | root is the graph, the agent is imported not rebuilt, `queue_up` does not re-run, `check_front` does |
-| 9 the budget | the budget node runs first with stable interrupt ids, the budget is session-scoped, `UNATTENDED` exists, and `buyer_agent` never asks for a budget |
-| 10 deploy | local only — see below |
+| 1 meet | three read-only tools (`search_events`, `get_seatmap`, `recall`), no way to buy or wait, `app_name=concert` |
+| 2 wake | the `PROACTIVE_INSTRUCTION` block has the exact shape the workbench prompt lab edits; still nothing that buys; the agent has no clock of its own |
+| 3 remember | a real `BaseMemoryService`, `recall` is `async`, `get_seatmap` writes `temp:` state and an artifact, `note_companion` writes `user:` state only, compaction is on with its own summariser model |
+| 4 resume | root is the graph and the app is resumable; the graph ends at `ready_to_buy`; only `check_front` reruns on resume; `queue:wait` is the interrupt id; a lost ticket ends the run instead of parking it forever; nothing in the package can buy |
+| 5 buy | `agree_budget` first with stable `budget:ask` / `budget:confirm` ids; `budget.parse` cases; the guard's refusal order (`no_authorization` → `wrong_seat_count` → `over_authorization` → `stale_plan` → `price_moved`); `purchase` retries once on 5xx with the same key and reports `attempts`; the venue really deduplicates on that key |
+| 6 cloud | the `concert/` package is byte-for-byte chapter 5 |
+
+The live tests for chapter 4 prove the run parks with exactly one ticket and
+reaches *ready to buy* on the same ticket after SKIP THE WAIT. For chapter 5:
+sell out section A during the wait and the order lands in C with two seats; a
+budget question nobody answers means no ticket and no order.
 
 ## What is deliberately not tested
 
-**Step 10's cloud path.** Creating a Cloud SQL instance takes ten minutes and
+**Chapter 6's cloud path.** Creating a Cloud SQL instance takes ten minutes and
 costs money, so `setup-cloud-state.sh` and `deploy-agent.sh` are verified by
-hand — see `docs/DRYRUN.md`. There is an explicit skipped test saying so, rather
-than a silent gap.
-
-What `tests/step10_deploy/` *does* check is everything that must be true before
-you deploy: `server.py` mounts a Pub/Sub trigger endpoint, `UNATTENDED` is
-honoured, `asyncpg` is declared in `requirements.txt`, the three shell scripts
-are valid, and `deploy-agent.sh` warns loudly when the session store is sqlite
-in `/tmp`.
-
-## Current status
-
-The fast suite passes: **36 passed, 10 skipped**.
-
-The 10 live tests are **written but have never been run as a suite**. Most of
-them encode runs done by hand while building the steps, so they are expected to
-pass — the two worth watching the first time are
-`step8/test_waking_it_does_not_take_a_second_ticket` and
-`step9/test_a_new_session_asks_again`, neither of which has been executed in
-exactly this form.
+hand. The deployable files (`main.py`, `Dockerfile`, `requirements.txt`,
+`monstertix/`) have their own checks outside this folder's chapter tests.
 
 ## Adding one
 
-Assert against **behaviour the instructions promise**, not implementation.
-`test_join_queue_is_long_running` earns its place because the codelab claims the
-run parks. A test that `tools.py` contains nine functions does not.
+Assert against **behaviour the course promises**, not implementation.
+`test_check_front_survives_a_lost_ticket` earns its place because the chapter
+claims the run never parks forever. A test that `tools.py` contains five
+functions does not.
 
 The helpers are in `harness.py`:
 
 ```python
-from harness import drive, load_step, needs_model, tool_names
+from harness import FakeContext, FakeToolContext, call_node, drive, load_step, needs_model, tool_names
 
-m = load_step("step6_pull_the_plug")     # imports that step's `concert` package
-t = drive(m.root_agent, ["Get us two tickets to the Amsterdam show."])
-assert t.called("join_queue")
-assert venue.tickets == 1                # `venue` is a fixture
+m = load_step("step5_buy")                 # imports that chapter's `concert` package
+t = drive(m.root_agent, ["Two tickets in Amsterdam for me and Sam."],
+          on_interrupt=lambda msg, tr: None)
+assert t.interrupts                        # it parked
+assert venue.tickets == 0                  # `venue` is a fixture
+
+from concert import nightly as n
+out = call_node(n.check_front, {"ticket": "q_1"}, FakeContext())   # a node, alone
 ```
 
-`load_step` clears any previously imported `concert` first — every step ships a
-package with the same name, and without that, step 7's test quietly asserts
-against step 6's code and passes for the wrong reason.
+`load_step` clears any previously imported `concert` first — every chapter
+ships a package with the same name, and without that, chapter 5's test quietly
+asserts against chapter 4's code and passes for the wrong reason.
 
 `drive` answers interrupts for you. Pass `on_interrupt=lambda msg, t: ...` to
 decide what to reply, or return `None` to leave the run parked and assert on
-that.
+that. `call_node` runs the plain function behind a `@node` with a fake context,
+so a refusal path can be tested without the graph, the venue or a model.

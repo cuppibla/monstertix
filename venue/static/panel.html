@@ -240,19 +240,19 @@
       <div class="ctl-grid">
         <button class="btn danger" onclick="sellout()">
           <b>SELL THE GOOD SEATS</b>
-          <span>Section A goes to zero. The agent's saved seat map is now a lie.</span>
+          <span>Section A goes to zero. A plan made from the old seat map is now stale; within "two seats, up to $250 each" only Section C is left.</span>
         </button>
         <button class="btn danger" onclick="sellout('C')">
           <b>SELL THE CHEAP SEATS</b>
-          <span>Section C goes to zero. Only seats above a small budget are left.</span>
+          <span>Section C goes to zero. Only seats above a small authorization are left.</span>
         </button>
         <button class="btn danger" onclick="hit('admin/hang-once')">
           <b>BREAK THE NEXT PURCHASE</b>
-          <span>Order is charged, then the reply fails. The runtime retries and buys again.</span>
+          <span>The order commits, then the reply fails. The agent retries with the same Idempotency-Key and gets the original order back — one order, not two.</span>
         </button>
         <button class="btn reset" onclick="hit('admin/reset')">
           <b>RESET THE VENUE</b>
-          <span>Back to 8 shows, all seats available, clock at 1&times;. Your chat history is untouched.</span>
+          <span>Back to 8 shows, all seats available, queue empty, clock at 1&times;. Sessions, memory and the agent's code are untouched.</span>
         </button>
       </div>
       </section>
@@ -309,7 +309,7 @@ const n = x => x.toLocaleString();
 function setStatus(s) {
   const waiting = (s.queue || []).filter(t => !t.ready);
   const atFront = (s.queue || []).filter(t =>  t.ready);
-  let cls = '', line = 'Nothing happening yet', sub = 'Go talk to the agent at :8000';
+  let cls = '', line = 'Nothing happening yet', sub = 'Go talk to the agent — adk web or the MonsterTix page';
 
   // "Rigged" is a flag on top of whatever is happening, never a state of its
   // own. Ranking it above the queue is how you end up telling someone to ask
@@ -319,7 +319,7 @@ function setStatus(s) {
   if (s.order_count > 1) {
     cls = 'bad';
     line = `Bought ${s.order_count} times`;
-    sub  = 'The retry went through again. This is the bug an idempotency key fixes.';
+    sub  = 'A retry bought a second time — it did not send the same Idempotency-Key. One order is the goal.';
   } else if (waiting.length) {
     const t = waiting[0];
     cls = s.hang_armed ? 'armed' : 'busy';
@@ -334,7 +334,7 @@ function setStatus(s) {
   } else if (s.hang_armed) {
     cls = 'armed';
     line = 'Next purchase is rigged to fail';
-    sub  = 'It will charge, then report an error. Get the agent to the front first.';
+    sub  = 'It will commit, then report an error. A retry with the same key gets the original order.';
   } else if (s.order_count === 1) {
     cls = 'ready';
     line = 'One order, exactly as intended';

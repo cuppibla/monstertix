@@ -7,10 +7,12 @@ preview looks like the published codelab without anyone installing Go.
 
     python3 docs/build-preview.py
 
-Every `## ` heading becomes a step. Everything else is ordinary markdown, plus
-two things the codelab format adds:
+Every `## ` heading becomes a step: the chapters, "Before you begin" and the
+final "Reference & optional". A heading that ends in `(N min)` gives its step
+that duration, and the suffix is dropped from the label. Everything else is
+ordinary markdown, plus two things the codelab format adds:
 
-    <aside class="positive">   the green "Developer's Note" boxes
+    <aside class="positive">   the green "Developer's Note" / model-answer boxes
     <aside class="negative">   the amber warnings
 
 Those are written as literal HTML in CODELAB.md and passed straight through.
@@ -27,9 +29,9 @@ HERE = pathlib.Path(__file__).parent
 SOURCE = HERE / "CODELAB.md"
 TARGET = HERE / "preview.html"
 
-CODELAB_ID = "long-running-agent-concert-tickets"
+CODELAB_ID = "monstertix-long-running-agents"
 AUTHORS = "Workshop"
-DURATION = "120"
+DURATION = "120"          # 110 minutes of class + 10 of buffer
 
 HEAD = """<!DOCTYPE html>
 <html lang="en">
@@ -120,12 +122,14 @@ def render(body: str) -> str:
         line = lines[i]
 
         # fenced code. Kept verbatim, escaped, never touched by inline rules.
-        if line.startswith("```"):
-            lang = line[3:].strip()
+        # A fence indented under a list item counts too.
+        if line.lstrip().startswith("```"):
+            indent = len(line) - len(line.lstrip())
+            lang = line.strip()[3:].strip()
             i += 1
             block = []
-            while i < len(lines) and not lines[i].startswith("```"):
-                block.append(lines[i])
+            while i < len(lines) and not lines[i].lstrip().startswith("```"):
+                block.append(lines[i][indent:] if lines[i][:indent].strip() == "" else lines[i])
                 i += 1
             i += 1
             attr = f' class="language-{lang}"' if lang else ""
@@ -135,6 +139,12 @@ def render(body: str) -> str:
         # literal HTML (the asides, and the odd raw block) passes straight through
         if line.lstrip().startswith(("<aside", "</aside", "<b>", "<img", "<br")):
             out.append(line)
+            i += 1
+            continue
+
+        # images on a line of their own
+        if match := re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", line):
+            out.append(f'<p><img alt="{esc(match.group(1))}" src="{esc(match.group(2))}"></p>')
             i += 1
             continue
 
@@ -201,8 +211,8 @@ def render(body: str) -> str:
         # paragraph: join until a blank line or a block element starts
         para = []
         while i < len(lines) and lines[i].strip() and not lines[i].startswith(
-            ("```", "|", "#", ">", "<aside", "</aside")
-        ) and not re.match(r"^\s*(?:[-*]|\d+\.)\s+", lines[i]):
+            ("|", "#", ">", "<aside", "</aside")
+        ) and not lines[i].lstrip().startswith("```") and not re.match(r"^\s*(?:[-*]|\d+\.)\s+", lines[i]):
             para.append(lines[i].strip())
             i += 1
         if para:
@@ -214,8 +224,10 @@ def render(body: str) -> str:
 def main() -> None:
     text = SOURCE.read_text()
 
-    title_match = re.match(r"^#\s+(.*)$", text.split("\n")[0])
-    title = title_match.group(1) if title_match else "Codelab"
+    # The title is the first `# ` heading, wherever it is — CODELAB.md starts
+    # with a claat metadata block, so it is not line one.
+    title_match = re.search(r"^#\s+(.*)$", text, flags=re.M)
+    title = title_match.group(1).strip() if title_match else "Codelab"
 
     parts = re.split(r"^## (.+)$", text, flags=re.M)
     steps = list(zip(parts[1::2], parts[2::2]))
@@ -231,7 +243,12 @@ def main() -> None:
         HEAD.format(title=esc(title), id=CODELAB_ID, authors=AUTHORS, duration=DURATION)
     ]
     for index, (label, body) in enumerate(steps):
-        chunks.append(f'    <google-codelab-step label="{esc(label)}" duration="0">\n')
+        # "Chapter 4 · Pause, Restart, Resume (25 min)" → label without the
+        # suffix, duration 25. A heading with no suffix gets 0.
+        minutes = "0"
+        if match := re.match(r"^(.*?)\s*\((\d+)\s*min\)\s*$", label):
+            label, minutes = match.group(1), match.group(2)
+        chunks.append(f'    <google-codelab-step label="{esc(label)}" duration="{minutes}">\n')
         if index == 0:
             chunks.append(about + "\n")
         chunks.append(render(body) + "\n")

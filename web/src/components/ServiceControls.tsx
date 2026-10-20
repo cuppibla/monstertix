@@ -21,20 +21,39 @@ export const DOT: Record<string, string> = {
   stopped: "var(--fg-faint)",
 };
 
-export function stateText(service: Service): string {
+/** The one word for a process's state, as the page shows it next to its switch:
+    running · starting · stopped · killed · external · remote · unreachable. */
+export function stateWord(service: Service): string {
   switch (service.state) {
     case "running":
-      return service.port ? t("on :{port}", { port: service.port }) : t("running");
+      return t("running");
     case "starting":
-      return service.port ? t("starting…") : t("waiting to fire");
+      return service.port ? t("starting") : t("waiting to fire");
     case "external":
-      return t("started in a terminal");
+      return t("external");
     case "remote":
-      return t("on Cloud Run");
+      return t("remote");
     case "unreachable":
-      return t("not answering");
+      return t("unreachable");
     default:
-      return service.last === "killed with SIGKILL" ? t("killed") : t("off");
+      return service.last === "killed with SIGKILL" ? t("killed") : t("stopped");
+  }
+}
+
+/** The word, plus where: "running · :8000", "external · started in a terminal". */
+export function stateText(service: Service): string {
+  const word = stateWord(service);
+  switch (service.state) {
+    case "running":
+      return service.port ? `${word} · :${service.port}` : word;
+    case "external":
+      return `${word} · ${t("started in a terminal")}`;
+    case "remote":
+      return `${word} · ${t("on Cloud Run")}`;
+    case "unreachable":
+      return `${word} · ${t("not answering")}`;
+    default:
+      return word;
   }
 }
 
@@ -115,10 +134,18 @@ export function ServiceControls({ name, log, onLog }: { name: string; log: boole
 
   return (
     <div className="flex items-center gap-2">
-      <span className="flex items-center gap-1.5 font-mono text-[0.68rem]" style={{ color: "var(--fg-faint)" }}>
+      <span className="flex items-center gap-1.5 font-mono text-[0.68rem]" style={{ color: "var(--fg-faint)" }}
+            title={svc.last || svc.state}>
         <span className={`dot ${svc.state === "starting" || busy ? "dot--busy" : ""}`}
               style={{ width: 7, height: 7, background: DOT[svc.state] ?? "var(--fg-faint)" }} />
-        {stateText(svc)}
+        <span className="rounded px-1 py-[1px] text-[0.62rem] font-semibold uppercase tracking-wide"
+              style={{ color: DOT[svc.state] ?? "var(--fg-faint)",
+                       background: `color-mix(in srgb, ${DOT[svc.state] ?? "var(--fg-faint)"} 14%, transparent)` }}>
+          {stateWord(svc)}
+        </span>
+        {svc.state === "running" && svc.port ? <span>:{svc.port}</span> : null}
+        {svc.state === "external" ? <span>{t("started in a terminal")}</span> : null}
+        {svc.state === "remote" ? <span>{t("on Cloud Run")}</span> : null}
       </span>
       {name === "agent" && svc.pid !== null && (
         <>

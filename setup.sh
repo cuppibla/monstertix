@@ -55,7 +55,7 @@ fi
 mkdir -p artifacts memory
 # The agent APPENDS to this file every time it calls remember(), so after a few
 # runs it fills up with duplicate booking lines. seed/memory/ holds the pristine
-# copies, and use-solution.sh restores from them at the start of every step.
+# copies, and use-solution.sh restores from them at the start of every chapter.
 [ -f memory/userx.md ] || cp seed/memory/default.md memory/userx.md
 
 # --- 4. Google Cloud ------------------------------------------------------
@@ -127,7 +127,7 @@ fi
 
 # One call, both jobs: reach the project (or create one), then make sure it can
 # be billed. Vertex AI and Cloud Run are both dead without a billing account,
-# and its absence otherwise turns up as a baffling 403 somewhere in Module 1.
+# and its absence otherwise turns up as a baffling 403 somewhere in Chapter 2.
 # Human-readable progress goes to stderr and streams straight to the terminal;
 # stdout carries one line, PROJECT=<id>, and nothing else.
 # A remembered project can be deleted between runs, or belong to an account
@@ -148,7 +148,7 @@ fi
 PROJECT=$(printf '%s\n' "$BOOTSTRAP" | sed -n 's/^PROJECT=//p' | tail -1)
 if [ -z "$PROJECT" ]; then
   echo ""
-  echo "✗ No usable project, so setup stops here — every step from Module 1"
+  echo "✗ No usable project, so setup stops here — every chapter from Chapter 2"
   echo "  onwards deploys into one. The message above says what to fix."
   exit 1
 fi
@@ -243,7 +243,7 @@ fi
 echo "→ auth       ok"
 
 # Quota project mismatches are the single most common cause of a confusing
-# 403 later, so fix it here rather than during Module 1.
+# 403 later, so fix it here rather than during Chapter 2.
 gcloud auth application-default set-quota-project "$PROJECT" >/dev/null 2>&1 \
   && echo "→ quota      set to $PROJECT"
 
@@ -251,16 +251,16 @@ gcloud auth application-default set-quota-project "$PROJECT" >/dev/null 2>&1 \
 # is a no-op, but each call still costs a round trip — so we diff first and
 # enable only what is missing, in one batched call.
 REQUIRED_APIS=(
-  aiplatform.googleapis.com        # Vertex AI — the models, every step
-  run.googleapis.com               # Cloud Run — the venue, and the agent in step 8
+  aiplatform.googleapis.com        # Vertex AI — the models, every chapter
+  run.googleapis.com               # Cloud Run — the venue (pre-work), and the agent in Chapter 6
   cloudbuild.googleapis.com        # builds the container for `run deploy --source`
   artifactregistry.googleapis.com  # where Cloud Build puts the image
   storage.googleapis.com           # Cloud Build's source staging bucket
-  pubsub.googleapis.com            # step 8 — the trigger topic
-  cloudscheduler.googleapis.com    # step 8 — the 3am cron
-  cloudtrace.googleapis.com        # step 8 — seeing what happened overnight
-  logging.googleapis.com           # step 8 — structured logs from an unattended run
-  sqladmin.googleapis.com          # step 10 — Cloud SQL, where sessions live in the cloud
+  pubsub.googleapis.com            # Chapter 6 — the trigger topic
+  cloudscheduler.googleapis.com    # Chapter 6 — the 3am cron
+  cloudtrace.googleapis.com        # Chapter 6 — seeing what happened overnight (optional)
+  logging.googleapis.com           # Chapter 6 — logs from a run nobody watched
+  sqladmin.googleapis.com          # Chapter 6 — Cloud SQL, where sessions live in the cloud
 )
 
 ENABLED=$(gcloud services list --enabled --project "$PROJECT" --format='value(config.name)' 2>/dev/null || true)
@@ -293,14 +293,14 @@ else
 fi
 
 # Ask the model one question, so a bad .env shows up here rather than in the
-# middle of Module 1. Reporting only — see the else branch below: this never
+# middle of Chapter 2. Reporting only — see the else branch below: this never
 # stops setup, because a 404 on the model id is not a reason to skip building
 # the venue and the seeded session.
 #
 # The client is built with NO arguments on purpose. .env is what `adk web` and
 # every deploy script read, so .env is what this has to test. A check that
 # passes because we hand-built a correct client here, while .env says something
-# else entirely, is worse than no check: it sends a student into Module 1
+# else entirely, is worse than no check: it sends a student into Chapter 2
 # believing the rig works.
 MODEL="${ADK_MODEL:-gemini-2.5-flash}"
 export ADK_MODEL="$MODEL"
@@ -382,7 +382,7 @@ case "$RESULT" in
   *)
     # NOT fatal. A model that will not answer is worth knowing about now, but
     # it is not worth stopping setup over: the venue, the seeded session and
-    # Cloud SQL are all still worth having, and Module 1 is the first step that
+    # Cloud SQL are all still worth having, and Chapter 2 is the first chapter that
     # actually needs the model. There is time to fix this.
     echo "→ model      $MODEL did not answer — setup continues anyway"
     echo ""
@@ -392,7 +392,7 @@ case "$RESULT" in
       *403*|*PERMISSION_DENIED*|*permission*)
         echo "  On a project this new, that is usually Vertex AI still switching"
         echo "  on rather than anything you did. It clears by itself. Carry on —"
-        echo "  and if Module 1 still cannot reach the model, run ./setup.sh again."
+        echo "  and if Chapter 2 still cannot reach the model, run ./setup.sh again."
         ;;
       *404*|*NOT_FOUND*|*not?found*)
         echo "  '-latest' aliases are AI Studio only and do not exist on Vertex."
@@ -408,22 +408,22 @@ case "$RESULT" in
 esac
 
 # --- 5. The pre-loaded session ------------------------------------------
-# Step 3 opens a session that has already been alive for two days. Without
+# Chapter 3 opens a session that has already been alive for two days. Without
 # this there is nothing to open. Safe to re-run: it rebuilds only the
 # 'two-days-ago' session and leaves the student's own work alone.
 if .venv/bin/python -m seed.session >/tmp/seed.log 2>&1; then
   echo "→ seed       session 'two-days-ago' ready (13 events, 2 days old)"
 else
-  echo "→ seed       FAILED — step 3 has nothing to open"
+  echo "→ seed       FAILED — Chapter 3 has nothing to open"
   tail -4 /tmp/seed.log | sed 's/^/               /'
   echo "               retry with:  python -m seed.session"
 fi
 
-# ── Cloud SQL, started now and collected in step 10 ─────────────────────
+# ── Cloud SQL, started now and collected in Chapter 6 ───────────────────
 #
 # Creating a Postgres instance takes eight to twelve minutes, which is most of
-# a module. Nobody should sit and watch it, so it starts here, in the
-# background, while the workshop gets on with Module 1 — and step 10 picks up
+# a chapter. Nobody should sit and watch it, so it starts here, in the
+# background, during the pre-work — and Chapter 6 picks up
 # whatever finished.
 #
 # db-f1-micro is the smallest thing Cloud SQL sells. It is the wrong size for
@@ -438,7 +438,7 @@ else
     --storage-size=10 --storage-type=HDD --no-backup --quiet \
     >"$HOME/.cloudsql-create.log" 2>&1 &
   echo "→ cloudsql   creating $SQL_INSTANCE in the background (~10 min)"
-  echo "             log: ~/.cloudsql-create.log — step 10 needs it, nothing before does"
+  echo "             log: ~/.cloudsql-create.log — Chapter 6 needs it, nothing before does"
 fi
 
 
@@ -496,7 +496,7 @@ echo ""
 echo "  check it:    ./verify.sh"
 echo ""
 
-# The workbench: every step in the browser, with the venue, the agent,
+# The workbench: every chapter in the browser, with the venue, the agent,
 # MonsterTix and the clock as switches. A failure here does not fail setup;
 # the codelab's terminal commands work without it.
 if ./workbench.sh start; then

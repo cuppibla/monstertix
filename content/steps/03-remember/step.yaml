@@ -1,0 +1,251 @@
+title: Remember What Matters
+minutes: 25
+color: cyan
+stage: 3
+summary: >-
+  The agent writes to four places, and each one lasts a different amount of time. This chapter
+  is where you find each of them on disk: the session database, the memory file, the artifact
+  folder, and the one that is never written at all.
+parts:
+- id: a
+  label: Session DB
+  headline: "Session DB: where this task lives"
+  body: a-session-db.md
+  exercises:
+    run:
+      title: One conversation, then look where it went
+      intro: >-
+        Load chapter 3. It copies the code, rebuilds `sessions.db` with the two-day-old
+        conversation back in it, and restarts the agent with both storage flags.
+      apps: [agent]
+      tasks:
+      - kind: prepare
+        id: prepare
+        step: 3
+      - kind: files
+        id: files
+        open: agent/concert/tools.py
+        stage: 3
+        compare: 2
+        only: [agent/concert/]
+        highlight: '^def note_companion|state\["user:prefs"\] =|state\["temp:seatmap"\] =|save_artifact\(|^def remember|^async def recall'
+        highlightLabel: >-
+          Three new writers: `note_companion` puts a fact in `user:prefs`, `get_seatmap` keeps a
+          summary in `temp:seatmap` and the full map in an artifact, and `recall`/`remember` read
+          and write the memory file. Each lands in a different store.
+      - kind: turn
+        id: turn
+        items:
+        - text: >-
+            In the ADK web UI, press **New Session** in the top bar. Note the session id it gives
+            you; it is a fresh row.
+          look: agent
+        - text: >-
+            One message. It should call `recall`, `search_events` and `get_seatmap`, and answer with
+            the **Saturday** show without asking which night, how many seats, or where you like to
+            sit. Everything it needs is in memory.
+          say: Get me and Sam two tickets to the Amsterdam show.
+          in: agent
+        - text: >-
+            Open the **Events** tab (the middle column). Count the rows: your message, one
+            `⚡ function call` and one `✓ response` per tool, and the final text. Each row is one
+            event.
+          look: agent
+        - text: >-
+            Open the **State** tab. `user:prefs` is there with Sam's rule, and `temp:seatmap` is
+            **not**, although `get_seatmap` wrote it a moment ago.
+          look: agent
+        - text: >-
+            Now switch the session dropdown to `two-days-ago`. Its State has `target_event_id` and
+            `party_size`, which your new session did not. Switch back.
+          look: agent
+        - text: >-
+            Read the same thing straight from the database. One read-only query: the tables, the
+            sessions, how many events each holds, and the user-scoped state.
+          run: >-
+            .venv/bin/python -c "import sqlite3, json; db = sqlite3.connect('file:sessions.db?mode=ro', uri=True);
+            print('tables      ', [r[0] for r in db.execute('select name from sqlite_master where type=\"table\"')]);
+            print('sessions    ', db.execute('select id, app_name, user_id from sessions').fetchall());
+            print('events      ', db.execute('select session_id, count(*) from events group by session_id').fetchall());
+            print('user_states ', db.execute('select app_name, user_id, state from user_states').fetchall());
+            print('session rows', db.execute('select id, state from sessions').fetchall())"
+  expect:
+  - "`⚡ recall`, then `⚡ search_events`, then `⚡ get_seatmap(\"ms-ams-01\")`, and an answer naming **Saturday 14 November** at Ziggo Dome with section A at $210, section B $145, section C $95. It did not ask which night."
+  - "**Events**: one row per message, per tool call and per tool return. **State**: `user:prefs` is there; `temp:seatmap` is not."
+  - "The `two-days-ago` session has `target_event_id` and `party_size` in its State and your new one does not; both show `user:prefs`."
+  - "The query: tables `sessions`, `events`, `user_states`, `app_states`; two sessions (`two-days-ago` with 13 events and yours); `user_states` holding `{\"prefs\": {\"Sam\": \"cannot do weeknights\"}}`."
+  checks:
+  - id: seeded
+    label: The two-day-old conversation is in `sessions.db`
+    probe: curl -sf $AGENT_URL/apps/concert/users/user/sessions/two-days-ago
+    contains: two-days-ago
+    hint: >-
+      This asks `adk web` for the session by id, so the agent has to be running. Loading chapter 3
+      rebuilds `sessions.db` with it; if it is missing, press **Load chapter 3** again and wait for
+      the agent to come back.
+  - id: recall
+    label: Your session called `recall` before answering
+    probe: python3 -m workbench.probe tool recall --current
+    hint: >-
+      In a **new** session, send "Get me and Sam two tickets to the Amsterdam show." If the agent
+      asked which show instead of calling `recall`, send the message again in another new session.
+  - id: saturday
+    label: It read the seat map for the Saturday show, `ms-ams-01`
+    probe: python3 -m workbench.probe tool get_seatmap --current
+    contains: ms-ams-01
+    hint: >-
+      The Tuesday show is `ms-ams-02` and $10 cheaper; memory says Sam bails on weeknights. If it
+      chose Tuesday, the `recall` return was ignored. Start a new session and ask again.
+  - id: prefs
+    label: "`user:prefs` is visible from your new session"
+    probe: python3 -m workbench.probe state user:prefs --contains weeknight
+    hint: >-
+      `user:` state is stored against the user, not the session, so it is there before you type
+      anything. If it is missing, load chapter 3 again; the seed writes it.
+  - id: temp
+    label: "`temp:seatmap` was never written to the database"
+    probe: python3 -m workbench.probe state temp:seatmap --absent --after-tool get_seatmap
+    hint: >-
+      This row waits until `get_seatmap` has run in your session. Once it has, `temp:` keys are
+      stripped before the state is saved, so the key is absent and the row passes.
+- id: b
+  label: Memory
+  headline: "Memory Service: bring the past into this task"
+  body: b-memory.md
+  exercises:
+    run:
+      title: Read the file, watch it enter the run, then write to it
+      intro: >-
+        Same chapter, same code. Open `memory/userx.md` in the explorer first, so you know what the
+        agent is about to read.
+      apps: [agent]
+      tasks:
+      - kind: files
+        id: memory
+        open: memory/userx.md
+        only: [memory/, agent/concert/memory.py]
+      - kind: turn
+        id: turn
+        items:
+        - text: >-
+            Find the line **Sam bails on weeknights** in the file. That sentence is about to decide
+            which show it picks.
+        - text: Press **New Session** in the ADK web UI.
+          look: agent
+        - say: Get me and Sam two tickets to the Amsterdam show.
+          in: agent
+        - text: >-
+            In **Events**, open the `✓ recall` row. Its `response.memory` is the whole file. Then
+            open the `⚡ get_seatmap` row: the `event_id` is `ms-ams-01`, the Saturday. Trace the
+            line from one to the other.
+          look: agent
+        - text: >-
+            Now give it something small and durable to keep. Watch it call `remember`, not just
+            say "noted".
+          say: Remember this for next time — we always want aisle seats.
+          in: agent
+        - text: >-
+            Press ↻ on the file explorer and open `memory/userx.md` again. A new line sits under
+            `## Preferences`. The conversation is not in the file; that one sentence is.
+  expect:
+  - "`✓ recall` returns `{\"memory\": \"# Memory — userx …\", \"source\": \"memory/userx.md\"}`: the file, as text, inside a tool return."
+  - "`⚡ get_seatmap` is called with `ms-ams-01`, and the reply names Saturday 14 November. The Tuesday show is never offered."
+  - "After the second message: `⚡ remember`, then `✓ remember` with `{\"remembered\": \"…aisle seats…\", \"file\": \"memory/userx.md\"}`."
+  - "`memory/userx.md` has one new bullet under `## Preferences`, and nothing else changed."
+  checks:
+  - id: recalled
+    label: "`recall` returned the file, and it says Sam bails on weeknights"
+    probe: python3 -m workbench.probe response recall --current --contains weeknights
+    hint: >-
+      The agent reads the file through `recall`. If the response is empty, the file is missing:
+      load chapter 3 again, which copies a fresh `memory/userx.md` into place.
+  - id: saturday
+    label: The preference reached the choice — it looked at `ms-ams-01`, the Saturday
+    probe: python3 -m workbench.probe tool get_seatmap --current
+    contains: ms-ams-01
+    hint: >-
+      If it looked at `ms-ams-02` (Tuesday) instead, the model did not apply what `recall`
+      returned. Start a new session and send the same message.
+  - id: remembered
+    label: It called `remember` — an explicit write, not a promise in chat
+    probe: python3 -m workbench.probe tool remember --current
+    hint: >-
+      Say "Remember this for next time — we always want aisle seats." If the agent replied
+      "noted" without a `⚡ remember` event, nothing was written; ask it again, plainly.
+  - id: file
+    label: The memory file now mentions aisle seats
+    probe: python3 -m workbench.probe memory --contains aisle
+    hint: >-
+      `remember` writes under `## Preferences` in `memory/userx.md`. If `⚡ remember` ran and the
+      file did not change, check the agent log for a write error, then restart the agent.
+- id: c
+  label: Services
+  headline: Services, lifetimes, and summaries
+  body: c-services.md
+  exercises:
+    run:
+      title: Compare the two sessions, then look at one artifact
+      intro: >-
+        No new code and no new conversation. You are reading what the last two sections left
+        behind, in three different stores.
+      apps: [agent]
+      tasks:
+      - kind: files
+        id: files
+        open: agent/concert/agent.py
+        stage: 3
+        compare: 2
+        only: [agent/concert/, artifacts/, memory/]
+        expand: [artifacts/]
+        highlight: '^app = App\(|events_compaction_config=EventsCompactionConfig\(|compaction_interval=|overlap_size=|summarizer=LlmEventSummarizer'
+        highlightLabel: >-
+          `App` wraps the agent so settings that belong to the whole application, like compaction,
+          have somewhere to live. `compaction_interval=3` is tuned for a workshop.
+      - kind: turn
+        id: turn
+        items:
+        - text: >-
+            In the ADK web UI, open the **State** tab of your current session and write down the
+            keys. Then switch to `two-days-ago` and do the same. One key is in both.
+          look: agent
+        - text: >-
+            Open the **Artifacts** tab in your current session: `seatmap_ms-ams-01.json`, version 0.
+            In the explorer, expand `artifacts/` and find the same file on disk; press ↻ if it is
+            not listed yet.
+          look: agent
+        - text: >-
+            Press **New Session** one more time and look at its State before you type anything.
+            `user:prefs` is already there. `temp:seatmap`, the artifact list, and the earlier
+            conversation are not.
+          look: agent
+        - text: >-
+            Read the compaction sample at the end of this page. It is a prepared, labelled example;
+            nothing here asks you to trigger one.
+  expect:
+  - "Your session's State: `user:prefs`. The `two-days-ago` State: `user:prefs`, `target_event_id`, `party_size`. Neither has `temp:seatmap`."
+  - "**Artifacts**: `seatmap_ms-ams-01.json`, and the same bytes under `artifacts/apps/concert/users/user/sessions/<session>/artifacts/seatmap_ms-ams-01.json/versions/0/`."
+  - "A brand-new session shows `user:prefs` in State and nothing else; its Events list is empty."
+  - "In `two-days-ago`, the Events list opens on a summary block where the first four turns used to be. That is a compaction record."
+  checks:
+  - id: artifact
+    label: The full seat map was saved as a file in `artifacts/`
+    probe: python3 -m workbench.probe artifacts
+    contains: seatmap
+    hint: >-
+      `get_seatmap` saves it through `--artifact_service_uri=file://…/artifacts`. If the folder is
+      empty after a seat map was read, the agent was started without that flag: restart it from
+      its switch.
+  - id: user
+    label: "`user:prefs` crosses sessions; `party_size` does not"
+    probe: python3 -m workbench.probe state user:prefs --contains weeknight
+    hint: >-
+      `user:prefs` lives in the `user_states` table, keyed by app `concert` and user `user`.
+      `party_size` sits in the `two-days-ago` row of `sessions` and nowhere else.
+  - id: compacted
+    label: The `two-days-ago` session carries a compaction record
+    probe: curl -sf $AGENT_URL/apps/concert/users/user/sessions/two-days-ago
+    contains: compaction
+    hint: >-
+      The seed writes a real `actions.compaction` event over the first four turns; this reads the
+      session back through `adk web`, so the agent has to be running. If the session is missing,
+      load chapter 3 again.

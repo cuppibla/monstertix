@@ -61,6 +61,8 @@ def workshop_env() -> dict[str, str]:
         if project.exists():
             env["GOOGLE_CLOUD_PROJECT"] = project.read_text().strip()
     env["AGENT_URL"] = env.get("AGENT_URL") or "http://127.0.0.1:8000"
+    # No venue named means the one the workbench runs on :8080 (`. ./set_env.sh local`).
+    env["VENUE_URL"] = (env.get("VENUE_URL") or "http://127.0.0.1:8080").rstrip("/")
     env["MEMORY_DIR"] = str(ROOT / "memory")
     env["MEMORY_USER"] = "userx"
     env["PYTHONUNBUFFERED"] = "1"

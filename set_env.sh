@@ -1,6 +1,6 @@
 # Source this in every terminal you open:  . ./set_env.sh
 #
-# It only sets things that never change between steps — your project, your
+# It only sets things that never change between chapters — your project, your
 # venue's URL, the model. Everything ADK-specific stays visible on the command
 # line, because in this workshop those flags ARE the material.
 
@@ -72,6 +72,10 @@ export AGENT_URL="${AGENT_URL:-http://127.0.0.1:8000}"
 # already in the shell, so anyone who exported an old value once kept it through
 # every restart — and a wrong value does not error, it just reads a file that is
 # not there and reports an empty memory.
+#
+# MEMORY_USER names the memory FILE (memory/userx.md) and nothing else. The ADK
+# identity is app "concert", user "user" everywhere — adk web, the MonsterTix
+# server, Cloud Run and the seed — and is not configured here.
 export MEMORY_DIR="$_root/memory"
 export MEMORY_USER="userx"
 

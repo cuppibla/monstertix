@@ -1,0 +1,101 @@
+Everything in this course happens in two columns and one panel. The venue on
+the left is the world. The **App** area under each "Your turn" card is where
+the agent runs. The reading you are in now is the learning area. Before the
+agent does anything, make sure you know which of them you are looking at, and
+which button changes what.
+
+## The App area
+
+Each "Your turn" card frames the apps that section uses, in tabs:
+
+| Tab | What it is | Port |
+|---|---|---|
+| **agent** | the ADK web UI: chat, **Events**, **State**, the agent graph. The development window into a run. You would never ship it. | :8000 |
+| **venue** | the same panel as on the left, framed when a section needs it | :8080 |
+| **monstertix** | your own server and page, the surface a person would actually use. Off until Chapter 2. | :8090 |
+
+At the top right of each card: the process **switch**, a **log** button, and
+for the agent **Restart** and **kill**. The word next to the switch is the
+process state: *running*, *stopped*, *killed*. The venue starts with the
+workbench and is always on.
+
+## Four buttons that are not the same thing
+
+You will press all four of these before the day ends. They are easy to mix up,
+and mixing them up destroys an experiment.
+
+| Button | What it does | What survives |
+|---|---|---|
+| **Load step N** (the bar in a "Your turn" card) | stops the agent, presses RESET THE VENUE, copies chapter N's code into `agent/` and `monstertix/`, starts the agent | sessions.db, the memory file, artifacts |
+| **Restart** (agent card) | stops and starts the `adk web` process. Nothing on disk changes | everything: sessions, state, tickets, the venue |
+| **Resume current task** (Chapter 4 on) | answers a paused run's queue wait, in the same session, with the same ticket. Starts nothing new | the task continues where it stopped |
+| **RESET THE VENUE** (venue panel) | the venue forgets orders, tickets and inventory changes. 8 shows, all seats, clock at 1× | the agent side: sessions, state, memory |
+
+A **new session** in the ADK web UI is a fifth thing: a fresh conversation
+with empty session state. It does not delete the old one. Chapter 3 is about
+what that means.
+
+:::note
+Loading a step is deliberate about what it keeps. It never deletes
+`sessions.db` or `memory/userx.md`, so a task you started in one chapter is
+still there in the next. When you do want a clean slate on the agent side,
+MonsterTix's **Wipe everything** (Chapter 2) is the button that does it, and it
+asks first.
+:::
+
+## Code viewer and Watch
+
+Every section has one **code viewer**. It shows the project's files, not a
+pasted copy: **NEW** and **CHANGED** badges mark what this chapter added
+relative to the one before, and tinted lines are the ones that carry the idea.
+A "Key code" button in the reading opens its file in that viewer and scrolls
+to the lines. The viewer reads this chapter's solution folder until you load
+the step, so the code is right even before you press Load.
+
+**Watch**, at the end of every section, runs read-only checks: the session
+store, the memory file, the venue's public state, the service logs. Each row
+shows the command under **how**. Rows marked *this session only* count only
+the newest session, so an earlier run of the same experiment cannot pass a
+check for you. An amber row tagged *expected* is a failure the section was
+built to show.
+
+Next and Previous only turn pages. Nothing is marked done by reading it; the
+chip in the top bar counts checks passed.
+
+:::exercise id="check"
+:::
+
+:::note
+If a check stays red, read its **hint** first: it says whether the result is
+the experiment's own outcome or an environment fault, and what to press.
+The full install, with every failure mode, is in `docs/PRE-WORK.md`.
+:::
+
+## Key code
+
+The code viewer above opened `agent/concert/agent.py`. The agent is the bottom
+of the file:
+
+:::code path="agent/concert/agent.py" highlight="^root_agent = Agent\(|^    (name|model|instruction|tools)="
+:::
+
+A name, a model, an instruction, and a list of three Python functions. That is
+all an `Agent` is. `adk web` found it because the file is called `agent.py`
+and the variable is called `root_agent`; the `App` under it is how the agent
+narrates its tool calls to the venue's activity feed. You read the rest of it
+in Chapter 2, when you need it.
+
+:::checkpoint
+**You press Restart on the agent card, then RESET THE VENUE. Which of these
+are gone: the chat you had in the ADK web UI, a queue ticket the agent held,
+an order on the panel, the memory file?**
+:::answer
+Only the venue side is gone: the queue ticket and the order. Restart stops and
+starts a process; `sessions.db` is a file on disk and the chat is still in it
+(the ADK web UI reopens the last session after a restart). RESET THE VENUE
+touches the venue's own database and nothing else, so the memory file and the
+session are untouched. The ticket is the interesting case: the agent's session
+still *remembers* a ticket number that the venue no longer has. Chapter 4
+builds the mechanism that handles exactly that.
+:::
+:::

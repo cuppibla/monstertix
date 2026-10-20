@@ -7,6 +7,7 @@ import { CodePageProvider, useCodePage, type CodeRef } from "../lib/code";
 import { FileExplorer } from "./FileExplorer";
 import { t } from "../i18n";
 import { Exercise, TaskSlot } from "./Exercise";
+import { TaskCard } from "./TaskCard";
 import { Terminal } from "./Terminal";
 
 /* A part's reading: markdown, plus the directives in lib/blocks.ts. Panels use
@@ -48,6 +49,54 @@ function Columns({ children }: { children: Block[][] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/* :::optional — off the main line. Collapsed, with the time it takes and
+   what it needs, so skipping it costs nothing and taking it is a choice. */
+function Optional({ title, minutes, needs, children }: { title: string; minutes: number; needs: string; children: Block[] }) {
+  return (
+    <details className="my-6 rounded-2xl border" style={{ borderColor: "var(--hairline)", background: "var(--overlay)" }}>
+      <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3.5 text-[0.92rem]">
+        <span className="kicker" style={{ color: "var(--fg-faint)" }}>{t("Optional")}</span>
+        <span className="font-medium" style={{ color: "var(--fg)" }}>{title || t("Go deeper")}</span>
+        <span className="ml-auto flex items-center gap-2 text-[0.74rem]" style={{ color: "var(--fg-faint)" }}>
+          {minutes > 0 && <span>{t("{n} min", { n: minutes })}</span>}
+          {needs && <span>· {t("needs {what}", { what: needs })}</span>}
+        </span>
+      </summary>
+      <div className="border-t px-5 pb-5 pt-2" style={{ borderColor: "var(--hairline)" }}>
+        <Blocks blocks={children} />
+      </div>
+    </details>
+  );
+}
+
+/* :::checkpoint — a question to answer before moving on. The :::answer
+   inside it is collapsed: predict first, then reveal. */
+function Checkpoint({ title, children }: { title: string; children: Block[] }) {
+  return (
+    <section className="my-7 rounded-3xl border p-6 sm:p-7"
+             style={{ borderColor: "color-mix(in srgb, var(--accent) 45%, var(--hairline))",
+                      background: "color-mix(in srgb, var(--accent) 6%, var(--card))" }}>
+      <div className="kicker" style={{ color: "var(--accent)" }}>{title || t("Checkpoint")}</div>
+      <div className="mt-3 [&>.prose>p]:text-[1.02rem] [&>.prose>p]:font-medium">
+        <Blocks blocks={children} />
+      </div>
+    </section>
+  );
+}
+
+function Answer({ children }: { children: Block[] }) {
+  return (
+    <details className="mt-4 rounded-2xl border" style={{ borderColor: "var(--hairline)", background: "var(--overlay)" }}>
+      <summary className="cursor-pointer px-4 py-2.5 text-[0.82rem] font-semibold" style={{ color: "var(--fg-muted)" }}>
+        {t("Reveal")}
+      </summary>
+      <div className="border-t px-4 pb-4 pt-1" style={{ borderColor: "var(--hairline)" }}>
+        <Blocks blocks={children} />
+      </div>
+    </details>
   );
 }
 
@@ -131,7 +180,8 @@ function TerminalBlock({ commands }: { commands: string[] }) {
 
 function placedTasks(blocks: Block[]): string[] {
   return blocks.flatMap((block) =>
-    block.kind === "task" ? [block.id] : block.kind === "section" ? placedTasks(block.children) : []);
+    block.kind === "task" ? [block.id]
+      : block.kind === "section" || block.kind === "optional" || block.kind === "checkpoint" ? placedTasks(block.children) : []);
 }
 
 function InlineExercise({ id, children }: { id: string; children: Block[] }) {
@@ -191,6 +241,14 @@ function Blocks({ blocks }: { blocks: Block[] }) {
             return <AppDock key={index} tabs={block.tabs} />;
           case "task":
             return <TaskSlot key={index} id={block.id} />;
+          case "taskcard":
+            return <TaskCard key={index} />;
+          case "optional":
+            return <Optional key={index} title={block.title} minutes={block.minutes} needs={block.needs}>{block.children}</Optional>;
+          case "checkpoint":
+            return <Checkpoint key={index} title={block.title}>{block.children}</Checkpoint>;
+          case "answer":
+            return <Answer key={index}>{block.children}</Answer>;
           case "terminal":
             return <TerminalBlock key={index} commands={block.commands} />;
           case "code":
@@ -215,7 +273,8 @@ const codeIndex = new WeakMap<Block, number>();
 function collectCode(blocks: Block[], into: { block: Block; ref: CodeRef }[]) {
   for (const block of blocks) {
     if (block.kind === "code") into.push({ block, ref: { path: block.path, highlight: block.highlight, label: block.label } });
-    else if (block.kind === "section" || block.kind === "exercise") collectCode(block.children, into);
+    else if (block.kind === "section" || block.kind === "exercise" || block.kind === "optional"
+             || block.kind === "checkpoint" || block.kind === "answer") collectCode(block.children, into);
     else if (block.kind === "columns") block.children.forEach((column) => collectCode(column, into));
   }
   return into;

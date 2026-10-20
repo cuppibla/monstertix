@@ -56,6 +56,11 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
   const rail = useRef<HTMLDivElement>(null);
   const activeIndex = steps.findIndex((s) => s.slug === activeSlug);
   const active = steps[activeIndex];
+  // Chapters are the course; a step marked `appendix: true` is reference,
+  // listed after them and never counted as a chapter.
+  const chapters = steps.filter((s) => !s.appendix);
+  const appendix = steps.filter((s) => s.appendix);
+  const activeChapter = chapters.findIndex((s) => s.slug === activeSlug);
   const named = (active?.parts ?? []).filter((p) => p.id);
   const parts = named.length > 1 ? named : [];
 
@@ -99,7 +104,7 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
 
       <div ref={rail} className="quiet-scroll overflow-x-auto">
         <div className="mx-auto flex w-max items-center gap-1 px-5 pb-2">
-          {steps.map((step, index) => {
+          {chapters.map((step, index) => {
             const isActive = step.slug === activeSlug;
             const accent = `var(--${step.color})`;
             return (
@@ -109,20 +114,42 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
                          style={{
                            borderColor: isActive ? accent : "var(--hairline)",
                            background: isActive ? `color-mix(in srgb, ${accent} 14%, transparent)` : "transparent",
-                           color: isActive ? accent : index < activeIndex ? "var(--fg-faint)" : "var(--fg-muted)",
+                           color: isActive ? accent : index < activeChapter ? "var(--fg-faint)" : "var(--fg-muted)",
                          }}>
                   <span className="grid h-[19px] w-[19px] place-items-center rounded-full text-[10px] font-semibold"
                         style={{ background: isActive ? accent : "transparent",
                                  border: isActive ? "none" : "1px solid var(--hairline-strong)",
                                  color: isActive ? "var(--stage)" : "inherit" }}>
-                    {step.order}
+                    {index + 1}
                   </span>
                   {isActive && <span className="pr-1 font-semibold">{step.title}</span>}
                 </NavLink>
-                {index < steps.length - 1 && <span className="px-0.5 text-[10px]" style={{ color: "var(--hairline-strong)" }}>›</span>}
+                {index < chapters.length - 1 && <span className="px-0.5 text-[10px]" style={{ color: "var(--hairline-strong)" }}>›</span>}
               </div>
             );
           })}
+          {appendix.length > 0 && (
+            <>
+              <span className="mx-2 h-4 w-px shrink-0" style={{ background: "var(--hairline-strong)" }} aria-hidden />
+              {appendix.map((step) => {
+                const isActive = step.slug === activeSlug;
+                const accent = `var(--${step.color})`;
+                return (
+                  <NavLink key={step.slug} to={`/step/${step.slug}`} data-active={isActive}
+                           title={`${step.kicker} · ${step.title}`}
+                           className="flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1 text-xs whitespace-nowrap"
+                           style={{
+                             borderColor: isActive ? accent : "var(--hairline)",
+                             background: isActive ? `color-mix(in srgb, ${accent} 14%, transparent)` : "transparent",
+                             color: isActive ? accent : "var(--fg-faint)",
+                           }}>
+                    <span className="text-[10px]" aria-hidden>§</span>
+                    <span className={isActive ? "pr-1 font-semibold" : ""}>{isActive ? step.title : t("Reference")}</span>
+                  </NavLink>
+                );
+              })}
+            </>
+          )}
         </div>
       </div>
 
@@ -138,7 +165,7 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
                          style={{ borderColor: isActive ? accent : "var(--hairline)",
                                   background: isActive ? `color-mix(in srgb, ${accent} 12%, transparent)` : "transparent",
                                   color: isActive ? accent : "var(--fg-muted)" }}>
-                  <span className="font-mono font-semibold">{active.order}{part.id}</span>
+                  <span className="font-mono font-semibold">{active.appendix ? "" : activeChapter + 1}{part.id}</span>
                   <span className={isActive ? "font-medium" : ""}>{part.label}</span>
                 </NavLink>
               );

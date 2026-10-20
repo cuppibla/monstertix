@@ -34,6 +34,15 @@ the swap is one line in a Runner:
     Runner(agent=root_agent, app_name="concert",
            session_service=...,
            memory_service=MarkdownMemoryService("./memory"))
+
+WHERE THE FILE LIVES
+--------------------
+On a laptop the root is a directory and the memory is `memory/userx.md`. On
+Cloud Run the root is `gs://<bucket>/memory` and the same file is a blob — a
+container's disk is thrown away on every restart, so a file there is not
+memory at all. The two-method interface does not change when the storage
+does; only `_read` and `_write` below know the difference, and the switch is
+the path you hand the constructor.
 """
 
 from __future__ import annotations
@@ -49,7 +58,8 @@ from google.adk.memory.memory_entry import MemoryEntry
 from google.adk.sessions import Session
 from google.genai import types
 
-MEMORY_DIR = pathlib.Path(os.environ.get("MEMORY_DIR", "./memory"))
+# A directory on a laptop, a gs:// prefix on Cloud Run. See the class.
+MEMORY_DIR = os.environ.get("MEMORY_DIR", "./memory")
 MEMORY_USER = os.environ.get("MEMORY_USER", "userx")
 
 
@@ -62,10 +72,18 @@ class MarkdownMemoryService(BaseMemoryService):
     """
 
     def __init__(self, root: str | pathlib.Path):
-        self.root = pathlib.Path(root)
+        root = str(root)
+        self.is_bucket = root.startswith("gs://")
+        self.root = root.rstrip("/") if self.is_bucket else pathlib.Path(root)
+
+    # --- the storage seam ----------------------------------------------------
+    #
+    # Everything above this line is the memory service. Everything below is
+    # "where is the text". Two methods, so moving from a directory to a bucket
+    # is a path change and nothing else.
 
     def _path(self, user_id: str, *, for_writing: bool = False) -> pathlib.Path:
-        """Where this user's memory lives.
+        """Where this user's memory lives, on a local root.
 
         Only creates the directory when something is about to be written. It
         used to mkdir on every call, including reads, which silently produced an
@@ -73,9 +91,40 @@ class MarkdownMemoryService(BaseMemoryService):
         reported "nothing remembered yet" — the same answer you get when the
         memory really is empty, and impossible to tell apart.
         """
-        if for_writing:
+        if for_writing and not self.is_bucket:
             self.root.mkdir(parents=True, exist_ok=True)
-        return self.root / f"{user_id}.md"
+        return pathlib.Path(self.root) / f"{user_id}.md"
+
+    def location(self, user_id: str) -> str:
+        """The file or the blob, as something a person can go and look at."""
+        if self.is_bucket:
+            return f"{self.root}/{user_id}.md"
+        return str(self._path(user_id).resolve())
+
+    def _blob(self, user_id: str):
+        # Imported here so a laptop without google-cloud-storage still runs
+        # the local path. Only the bucket path needs it, and only on Cloud Run.
+        from google.cloud import storage
+
+        bucket_name, _, prefix = self.root[len("gs://"):].partition("/")
+        name = f"{prefix}/{user_id}.md" if prefix else f"{user_id}.md"
+        return storage.Client().bucket(bucket_name).blob(name)
+
+    def _read(self, user_id: str) -> str | None:
+        """The whole memory as text, or None if nothing has been written."""
+        if self.is_bucket:
+            blob = self._blob(user_id)
+            if not blob.exists():
+                return None
+            return blob.download_as_text()
+        path = self._path(user_id)
+        return path.read_text() if path.exists() else None
+
+    def _write(self, user_id: str, text: str) -> None:
+        if self.is_bucket:
+            self._blob(user_id).upload_from_string(text, content_type="text/markdown")
+            return
+        self._path(user_id, for_writing=True).write_text(text)
 
     async def add_session_to_memory(self, session: Session) -> None:
         """Ingest a whole conversation. We deliberately do not.
@@ -102,18 +151,18 @@ class MarkdownMemoryService(BaseMemoryService):
         the point where the file stops fitting in a prompt, and that is exactly
         when you swap this class for Memory Bank.
         """
-        path = self._path(user_id)
-        if not path.exists():
+        text = self._read(user_id)
+        if text is None:
             return SearchMemoryResponse(memories=[])
 
         return SearchMemoryResponse(
             memories=[
                 MemoryEntry(
                     content=types.Content(
-                        role="user", parts=[types.Part(text=path.read_text())]
+                        role="user", parts=[types.Part(text=text)]
                     ),
                     author=user_id,
-                    custom_metadata={"source": str(path)},
+                    custom_metadata={"source": self.location(user_id)},
                 )
             ]
         )
@@ -145,11 +194,11 @@ async def recall() -> dict:
         # Say WHICH file was missing. "nothing remembered yet" on its own is
         # indistinguishable from reading the wrong path, and MEMORY_USER is easy
         # to have left set to something stale in a shell.
-        looked_at = memory_service._path(MEMORY_USER)
+        looked_at = memory_service.location(MEMORY_USER)
         return {
             "memory": "",
             "note": f"nothing remembered yet — no file at {looked_at}",
-            "looked_at": str(looked_at.resolve()),
+            "looked_at": looked_at,
             "memory_user": MEMORY_USER,
         }
 
@@ -172,11 +221,12 @@ def remember(fact: str) -> dict:
     Returns:
         Confirmation and the file written to.
     """
-    path = memory_service._path(MEMORY_USER, for_writing=True)
-    existing = path.read_text() if path.exists() else f"# Memory — {MEMORY_USER}\n"
+    existing = memory_service._read(MEMORY_USER)
+    if existing is None:
+        existing = f"# Memory — {MEMORY_USER}\n"
     if "## Preferences" not in existing:
         existing += "\n## Preferences\n"
     lines = existing.rstrip().splitlines()
     lines.insert(lines.index("## Preferences") + 1, f"- {fact.strip()}")
-    path.write_text("\n".join(lines) + "\n")
-    return {"remembered": fact, "file": str(path)}
+    memory_service._write(MEMORY_USER, "\n".join(lines) + "\n")
+    return {"remembered": fact, "file": memory_service.location(MEMORY_USER)}

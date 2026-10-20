@@ -22,6 +22,20 @@
        :::code path="agent/concert/agent.py" highlight="LongRunningFunctionTool" label="…"
        :::
 
+       :::task                      the current task card (Resume current task)
+       :::
+
+       :::optional title="…" minutes=10 needs="…"
+       Collapsed until opened; off the main line.
+       :::
+
+       :::checkpoint
+       A question to answer before moving on.
+       :::answer
+       Collapsed behind "Reveal".
+       :::
+       :::
+
    Sections nest, so the parser is line-based rather than a regular
    expression: it tracks how deep it is and only closes at depth zero.
 */
@@ -38,9 +52,13 @@ export type Block =
   | { kind: "file"; path: string; label: string }
   | { kind: "app"; tabs: PaneTab[] }
   | { kind: "task"; id: string }
+  | { kind: "taskcard" }
   | { kind: "terminal"; commands: string[] }
   | { kind: "code"; path: string; highlight: string; label: string; button: boolean }
   | { kind: "exercise"; id: string; plain: boolean; children: Block[] }
+  | { kind: "optional"; title: string; minutes: number; needs: string; children: Block[] }
+  | { kind: "checkpoint"; title: string; children: Block[] }
+  | { kind: "answer"; children: Block[] }
   | { kind: "columns"; children: Block[][] }
   | { kind: "section"; kicker: string; headline: string; children: Block[] };
 
@@ -146,8 +164,25 @@ export function parseBlocks(markdown: string): Block[] {
       if (current.length) commands.push(current.join("\n").trim());
       blocks.push({ kind: "terminal", commands });
     } else if (name === "task") {
-      // Inside :::exercise: put that card's task (by id) here, in the reading.
-      blocks.push({ kind: "task", id: attribute(rawArgs, "id") });
+      // With an id, inside :::exercise: put that card's task (by id) here, in
+      // the reading. With no id: the current task card (TaskCard.tsx), read
+      // from the session store, with the Resume current task button.
+      const id = attribute(rawArgs, "id");
+      blocks.push(id ? { kind: "task", id } : { kind: "taskcard" });
+    } else if (name === "optional") {
+      // Off the main line: collapsed, with the time it takes and what it needs.
+      blocks.push({
+        kind: "optional",
+        title: attribute(rawArgs, "title"),
+        minutes: Number(attribute(rawArgs, "minutes")) || 0,
+        needs: attribute(rawArgs, "needs"),
+        children: parseBlocks(body),
+      });
+    } else if (name === "checkpoint") {
+      // A question to answer before moving on; an :::answer inside it is collapsed.
+      blocks.push({ kind: "checkpoint", title: attribute(rawArgs, "title"), children: parseBlocks(body) });
+    } else if (name === "answer") {
+      blocks.push({ kind: "answer", children: parseBlocks(body) });
     } else if (name === "app") {
       // An app framed in the reading: tab="agent", or several, tab="agent venue".
       blocks.push({ kind: "app", tabs: attribute(rawArgs, "tab").split(/[\s,]+/).filter(Boolean) as PaneTab[] });

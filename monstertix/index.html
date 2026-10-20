@@ -28,7 +28,7 @@
   header {
     background:linear-gradient(135deg,var(--grape) 0%,var(--fur-dark) 55%,var(--fur) 100%);
     color:#fff; padding:14px 20px; display:flex; align-items:center; gap:14px;
-    box-shadow:0 2px 0 rgba(0,0,0,.16);
+    box-shadow:0 2px 0 rgba(0,0,0,.16); flex-wrap:wrap;
   }
   .logo { width:44px; height:44px; flex:none; filter:drop-shadow(0 2px 3px rgba(0,0,0,.3)); }
   .brand b { font-size:21px; letter-spacing:.5px; display:block; line-height:1.1; }
@@ -49,7 +49,7 @@
     border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:6px 13px;
   }
   .ghost:hover { background:rgba(255,255,255,.26); }
-  .ghost.danger { border-color:rgba(255,140,120,.65); color:#ffd9d1; }
+  .ghost.danger { border-color:rgba(255,140,120,.65); color:#ffd9d1; margin-left:10px; }
   .ghost.danger:hover { background:rgba(255,90,60,.35); border-color:#ff8c78; }
 
   /* ---------- the are-you-sure ---------- */
@@ -92,6 +92,35 @@
     width:min(760px,94%); margin:18px auto 2px; color:var(--dim); font-size:14px;
   }
 
+  /* ---------- the task banner ---------- */
+  /* One line that says what the task is doing, read from the server every few
+     seconds. Not from this page's memory of what it did — from the session
+     store. Reload the tab, kill the server, come back: it still says the truth. */
+  .task {
+    width:min(760px,94%); margin:10px auto 0; display:flex; align-items:center; gap:12px;
+    border:1px solid var(--line); border-left:5px solid var(--dim); border-radius:12px;
+    padding:10px 14px; background:color-mix(in srgb,var(--paper) 86%,#fff);
+    font-size:14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .task { background:color-mix(in srgb,var(--paper) 80%,#fff 6%); }
+  }
+  .task .state { font-weight:700; letter-spacing:.2px; }
+  .task .detail { color:var(--dim); flex:1; min-width:0; overflow:hidden;
+                  text-overflow:ellipsis; white-space:nowrap; }
+  .task.queue  { border-left-color:var(--fur-dark); }
+  .task.person { border-left-color:var(--warn); }
+  .task.ready  { border-left-color:var(--slime); }
+  .task.done   { border-left-color:var(--grape); }
+  .task.running{ border-left-color:var(--fur); }
+  .task button {
+    font:inherit; font-size:13px; cursor:pointer; white-space:nowrap; flex:none;
+    border:1px solid var(--fur-dark); background:var(--fur-dark); color:#fff;
+    border-radius:999px; padding:5px 13px;
+  }
+  .task button:disabled { opacity:.45; cursor:default; }
+  .task .sid { font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--dim); flex:none; }
+
   /* ---------- conversation ---------- */
   main { flex:1; overflow-y:auto; padding:10px 0 20px; }
   .thread { width:min(760px,94%); margin:0 auto; display:flex; flex-direction:column; gap:12px; }
@@ -109,10 +138,12 @@
   }
   .row.me .bubble { background:var(--fur); color:#04252b; border-color:transparent; }
   .bubble.ask { border-left:4px solid var(--warn); }
+  .bubble.ask.queue { border-left-color:var(--fur-dark); }
   .bubble .label {
     display:block; font-size:11px; letter-spacing:1.4px; text-transform:uppercase;
     color:var(--warn); margin-bottom:4px; font-weight:700;
   }
+  .bubble.queue .label { color:var(--fur-dark); }
   .tool {
     align-self:center; font:12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
     color:var(--dim); background:color-mix(in srgb,var(--paper) 70%,var(--line));
@@ -160,31 +191,40 @@
     <b>MONSTERTIX</b>
     <span>we scare up the good seats</span>
   </div>
-  <div class="who-am-i" title="every booking, every memory and every budget belongs to this person">
+  <div class="who-am-i" title="every booking, every memory and every authorization belongs to this person">
     <span class="avatar">C</span>
     <span class="name">Userx</span>
   </div>
   <button class="ghost" id="newSession" title="Start a fresh conversation. Nothing is deleted.">
     + New session
   </button>
-  <button class="ghost danger" id="wipe" title="Delete every session and the memory file">
-    Reset memory
-  </button>
   <div class="live"><i></i><span id="status">agent online</span></div>
+  <button class="ghost danger" id="wipe" title="Delete every session and the memory file">
+    Wipe everything
+  </button>
 </header>
 
 <div class="strap">A ticket booking assistant.</div>
+
+<!-- What the task is doing, from GET /task. -->
+<div class="task" id="task">
+  <span class="state" id="taskState">idle</span>
+  <span class="detail" id="taskDetail">no task in this session yet</span>
+  <span class="sid" id="taskSid"></span>
+  <button id="resume" disabled title="Continue a run that is waiting in the queue">Resume</button>
+</div>
 
 <div class="scrim" id="scrim">
   <div class="sheet">
     <div class="warn">Dangerous · cannot be undone</div>
     <h2>Wipe everything this agent knows?</h2>
     <ul>
-      <li><b>Every session</b> — every conversation, every queue ticket it is holding, every agreed budget.</li>
+      <li><b>Every session</b> — every conversation, every queue ticket it is holding, every authorization you confirmed.</li>
       <li><b>The memory file</b> — who comes with you, what you cannot stand, what you have paid before.</li>
     </ul>
     <p style="font-size:14.5px;margin:10px 0 0">
       A run parked in a queue right now will be lost. There is no undo and no backup.
+      This is not "New session" — that keeps everything and just starts a new conversation.
     </p>
     <div class="where" id="whereText">checking where state lives…</div>
     <div class="row2">
@@ -204,13 +244,26 @@
 </footer>
 
 <script>
-// One session for this tab, until you ask for another.
-let SESSION = "web-" + Math.random().toString(36).slice(2, 9);
+// One session for this tab, until you ask for another. Remembered across a
+// reload, because the task lives on the server and reloading a page should not
+// lose track of it.
+const KEY = "monstertix.session";
+let SESSION = localStorage.getItem(KEY) || ("web-" + Math.random().toString(36).slice(2, 9));
+localStorage.setItem(KEY, SESSION);
 const thread = document.getElementById("thread");
 const box = document.getElementById("box");
 const send = document.getElementById("send");
+const statusEl = document.getElementById("status");
+let BUSY = false;              // a /wake from this page is in flight
 
-function bubble(text, who, isAsk) {
+function setSession(id) {
+  SESSION = id;
+  localStorage.setItem(KEY, id);
+  SEEN = Date.now() / 1000;
+  document.getElementById("taskSid").textContent = id;
+}
+
+function bubble(text, who, askKind) {
   const row = document.createElement("div");
   row.className = "row" + (who === "me" ? " me" : "");
   const pip = document.createElement("div");
@@ -219,11 +272,12 @@ function bubble(text, who, isAsk) {
     ? '<b style="color:#0d3b02;font-size:13px">C</b>'
     : '<svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#fff"/><circle cx="12" cy="12" r="4.5" fill="#131a2a"/></svg>';
   const b = document.createElement("div");
-  b.className = "bubble" + (isAsk ? " ask" : "");
-  if (isAsk) {
+  b.className = "bubble" + (askKind ? " ask " + askKind : "");
+  if (askKind) {
     const l = document.createElement("span");
     l.className = "label";
-    l.textContent = "needs your answer";
+    l.textContent = askKind === "queue" ? "waiting in the queue — Resume when you like"
+                                        : "needs your answer";
     b.appendChild(l);
   }
   b.appendChild(document.createTextNode(text));
@@ -243,6 +297,12 @@ function typing() {
   return row;
 }
 
+// What kind of pause a reply ended on, for the bubble's label.
+function askKind(d) {
+  if (!d.awaiting_input) return null;
+  return d.awaiting_kind === "queue" ? "queue" : "person";
+}
+
 // ── Watching for work that finishes without you ───────────────────────────
 //
 // A scheduled run completes on the server. Nothing about that reaches this page
@@ -255,6 +315,7 @@ function typing() {
 let SEEN = Date.now() / 1000;
 
 async function pollForNews() {
+  if (BUSY) return;            // our own request will render its reply
   try {
     const r = await fetch(`session/${SESSION}/messages?since=${SEEN}`);
     if (!r.ok) return;
@@ -262,21 +323,101 @@ async function pollForNews() {
     if (d.now) SEEN = Math.max(SEEN, d.now);
     (d.said || []).forEach((line, i) => {
       const last = i === d.said.length - 1;
-      bubble(line, "agent", last && d.awaiting_input);
+      bubble(line, "agent", last ? askKind(d) : null);
     });
-    if (d.said && d.said.length) {
-      document.getElementById("status").textContent =
-        d.awaiting_input ? "needs your answer" : "agent online";
-    }
   } catch (e) { /* offline for a moment. Try again on the next tick. */ }
 }
 setInterval(pollForNews, 4000);
 
-async function ask(text) {
-  bubble(text, "me");
+// ── The task banner ───────────────────────────────────────────────────────
+//
+// GET /task reads session state and reports: is the run parked, and on what?
+// Five states a person needs to tell apart, because each one wants something
+// different from them:
+//
+//   running               a request is in flight — wait
+//   waiting in the queue  nobody needs to do anything; a clock, a scheduler or
+//                         the Resume button may say "check again"
+//   waiting for you       a question only you may answer — type it in the chat
+//   ready to buy          at the front; nothing bought (Chapter 4 stops here)
+//   done · order …        an order exists
+const taskEl = document.getElementById("task");
+const resumeBtn = document.getElementById("resume");
+let TASK = null;
+
+function showTask(t) {
+  TASK = t;
+  let cls = "", state = "idle", detail = "no task in this session yet";
+  const show = t.queue_event_id || (t.plan && t.plan.event_id) || "";
+  if (BUSY) {
+    cls = "running"; state = "running"; detail = "the agent is working on it";
+  } else if (t.pending && t.pending.kind === "queue") {
+    cls = "queue"; state = "waiting in the queue";
+    detail = (t.queue_position ? `#${t.queue_position.toLocaleString()} · ` : "")
+           + (t.queue_ticket ? `ticket ${t.queue_ticket}` : "") + (show ? ` · ${show}` : "");
+  } else if (t.pending && t.pending.kind === "person") {
+    cls = "person"; state = "waiting for you";
+    detail = "answer in the chat below";
+  } else if (t.pending) {
+    cls = "person"; state = "waiting"; detail = t.pending.id;
+  } else if (t.last_order) {
+    cls = "done"; state = "done · order " + (t.last_order.order_id || t.last_order.id || "?");
+    const o = t.last_order;
+    detail = [o.event_id, o.section ? "section " + o.section : "", o.seats ? o.seats + " seats" : ""]
+             .filter(Boolean).join(" · ");
+  } else if (t.ready_to_buy) {
+    cls = "ready"; state = "ready to buy";
+    detail = "at the front of the queue" + (show ? ` for ${show}` : "") + " · nothing bought";
+  } else if (t.invocations) {
+    state = "idle"; detail = `${t.invocations} run${t.invocations === 1 ? "" : "s"} so far, nothing paused`;
+  }
+  if (t.authorization && t.authorization.confirmed && cls !== "done") {
+    detail += ` · authorized: ${t.authorization.text || ""}`.replace(/: $/, "");
+  }
+  taskEl.className = "task " + cls;
+  document.getElementById("taskState").textContent = state;
+  document.getElementById("taskDetail").textContent = detail;
+  document.getElementById("taskSid").textContent = t.session_id || SESSION;
+  const canResume = !BUSY && t.pending && t.pending.kind === "queue";
+  resumeBtn.disabled = !canResume;
+  resumeBtn.title = canResume ? "Tell the run to check the queue again"
+                  : (t.pending && t.pending.kind === "person")
+                    ? "The agent is waiting for YOU — answer in the chat"
+                    : "Nothing is waiting in the queue";
+}
+
+async function pollTask() {
+  try {
+    const r = await fetch(`task?session_id=${encodeURIComponent(SESSION)}`);
+    if (!r.ok) return;
+    showTask(await r.json());
+  } catch (e) { /* offline for a moment */ }
+}
+setInterval(pollTask, 3000);
+pollTask();
+
+// Resume: only a queue wait. A question for a person stays a question for a
+// person, and the button says so instead of answering on their behalf.
+resumeBtn.onclick = async () => {
+  if (TASK && TASK.pending && TASK.pending.kind === "person") {
+    bubble("The agent is waiting for you, not for the queue. Answer in the chat.", "agent");
+    return;
+  }
+  if (!TASK || !TASK.pending) {
+    bubble("Nothing is paused in this session.", "agent");
+    return;
+  }
+  await ask("Checking the queue again.", { silent: true });
+};
+
+async function ask(text, opts = {}) {
+  if (!opts.silent) bubble(text, "me");
+  else bubble("▶ Resume", "me");
   const wait = typing();
   send.disabled = true;
-  document.getElementById("status").textContent = "thinking…";
+  BUSY = true;
+  statusEl.textContent = "thinking…";
+  showTask(TASK || {});
   try {
     const r = await fetch("wake", {
       method: "POST",
@@ -290,7 +431,7 @@ async function ask(text) {
     // so it gets its own treatment rather than looking like an ordinary reply.
     (data.said || []).forEach((line, i) => {
       const last = i === (data.said.length - 1);
-      bubble(line, "agent", last && data.awaiting_input);
+      bubble(line, "agent", last ? askKind(data) : null);
     });
     SEEN = Date.now() / 1000;
     if (!data.said || !data.said.length) {
@@ -300,8 +441,10 @@ async function ask(text) {
     wait.remove();
     bubble("Could not reach the agent: " + e.message, "agent");
   }
+  BUSY = false;
   send.disabled = false;
-  document.getElementById("status").textContent = "agent online";
+  statusEl.textContent = "agent online";
+  pollTask();
   box.focus();
 }
 
@@ -322,15 +465,20 @@ box.addEventListener("input", () => {
 });
 
 // ---------- session + wipe ----------
+// Two different things, kept apart on purpose:
+//   New session   a new conversation. Every old session, every ticket, the
+//                 memory file — all still there.
+//   Wipe          deletes all of it. Asks first, and says what it deletes.
 const scrim = document.getElementById("scrim");
 
 document.getElementById("newSession").onclick = async () => {
   const r = await fetch("session/new", { method: "POST" });
-  SESSION = (await r.json()).session_id;
-  SEEN = Date.now() / 1000;
+  setSession((await r.json()).session_id);
   thread.innerHTML = "";
   bubble("New session. I have forgotten this conversation — including whatever "
-       + "budget we agreed — but I still know you from past bookings.", "agent");
+       + "you authorized me to spend — but I still know you from past bookings. "
+       + "Nothing was deleted.", "agent");
+  pollTask();
 };
 
 document.getElementById("wipe").onclick = async () => {
@@ -347,14 +495,16 @@ document.getElementById("confirm").onclick = async () => {
   scrim.classList.remove("open");
   const r = await fetch("admin/wipe", { method: "POST" });
   const d = await r.json();
-  SESSION = d.session_id;
+  setSession(d.session_id);
   thread.innerHTML = "";
   bubble("Wiped. " + d.sessions_deleted + " session(s) deleted"
        + (d.memory_deleted.length ? " and " + d.memory_deleted.join(", ") + " removed"
                                   : ", no memory file found")
        + ". I do not know you any more.", "agent");
+  pollTask();
 };
 
+document.getElementById("taskSid").textContent = SESSION;
 bubble("Hi Userx — I book concert tickets. I know what you have booked before, "
      + "so tell me what you want and I'll take it from there, including the waiting.",
      "agent");

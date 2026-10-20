@@ -1,6 +1,8 @@
 /* Everything the page asks the workbench, and the shapes of the answers. */
 
-export type CheckCard = { id: string; label: string; hint: string; expected: boolean; note: string };
+export type CheckCard = { id: string; label: string; hint: string; expected: boolean; note: string;
+  /** "session" when the probe looks only at the newest session (`--current`, `--since-session`). */
+  scope?: string };
 export type CheckResult = {
   id: string;
   passed: boolean;
@@ -20,10 +22,45 @@ export type TurnItem = {
   action?: "start" | "stop" | "kill" | "restart";
   look?: PaneTab;
   run?: string;
-  clock?: { in?: number; every?: number };
+  clock?: { in?: number; every?: number; trigger?: boolean };
   answer?: string;
   /** A venue button that only means something once the agent holds a place in line. */
   needs?: "queue";
+  /** `resume: task`: the Resume current task button, in the numbered list. */
+  resume?: "task";
+};
+
+/** The current task, as /api/task reads it from the session store. */
+export type TaskSummary = {
+  session_id: string | null;
+  user_id: string;
+  app_name: string;
+  store: string;
+  pending: { id: string; kind: "queue" | "person" | "other" } | null;
+  pending_message?: string;
+  /** What it is paused on: the queue, you, something else, or nothing. */
+  paused: "queue" | "you" | "other" | null;
+  kind_label: string;
+  queue_ticket: string | null;
+  queue_event_id: string | null;
+  plan: Record<string, unknown> | null;
+  authorization: Record<string, unknown> | null;
+  authorization_text: string;
+  ready_to_buy: boolean | null;
+  last_order: Record<string, unknown> | string | null;
+  invocations: number;
+  started: number;
+  updated: number;
+  events: number;
+};
+
+export type ResumeResult = {
+  ok: boolean;
+  reason?: string;
+  via?: string;
+  session_id: string | null;
+  said?: string[];
+  task?: TaskSummary;
 };
 
 export type PromptTry = {
@@ -44,6 +81,8 @@ export type Task = {
   // prepare
   step?: number;
   resetVenue?: boolean;
+  /** `venue`: only reset the venue; code, sessions and memory stay. Default: load the step's code. */
+  scope?: "all" | "venue";
   // files
   open?: string;
   start?: string;
@@ -91,6 +130,10 @@ export type StepCard = {
   summary: string;
   venue: boolean;
   stage: number | null;
+  /** Listed after the chapters, as reference. */
+  appendix: boolean;
+  /** Set when the step's step.yaml does not parse: shown instead of the step. */
+  error?: string;
   parts: { id: string; label: string; headline: string; checkCount: number }[];
 };
 
@@ -150,14 +193,18 @@ export const api = {
   check: (slug: string, part: string) =>
     post<{ results: CheckResult[] }>(`/api/check/${q(slug)}?part=${q(part)}`),
   services: () => get<{ services: Service[]; stage: Stage }>("/api/services"),
-  service: (name: string, action: string, settings?: Record<string, number>) =>
+  service: (name: string, action: string, settings?: Record<string, number | boolean>) =>
     post<Service & { detail?: string }>(`/api/services/${q(name)}/${q(action)}`, settings ?? {}),
   serviceLog: (name: string) => get<{ log: string }>(`/api/services/${q(name)}/log`),
   stage: () => get<Stage & { steps: number[] }>("/api/stage"),
   stageChanges: (since: number, to: number) =>
     get<{ files: StageChange[]; removed: string[] }>(`/api/stage/changes?since=${since}&to=${to}`),
-  stageLoad: (step: number, resetVenue: boolean) =>
-    post<Stage & { ok: boolean; output: string }>("/api/stage", { step, resetVenue }),
+  stageLoad: (step: number, resetVenue: boolean, scope: "all" | "venue" = "all") =>
+    post<Stage & { ok: boolean; output: string; scope?: string }>("/api/stage", { step, resetVenue, scope }),
+  task: (sessionId?: string) =>
+    get<TaskSummary>(`/api/task${sessionId ? `?session_id=${q(sessionId)}` : ""}`),
+  taskResume: (sessionId?: string) =>
+    post<ResumeResult>("/api/task/resume", sessionId ? { session_id: sessionId } : {}),
   venueState: () => get<{ up: boolean; queue: number; orders: number }>("/api/venue/state"),
   venue: (action: string, body?: Record<string, unknown>) =>
     post<{ ok: boolean; error?: string }>(`/api/venue/${q(action)}`, body ?? {}),

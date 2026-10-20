@@ -1,244 +1,243 @@
-# Everything You Need to Build Long-Running Agents on Google Cloud
+# MonsterTix — Long-Running Agents on Google Cloud
 
-A 2-hour hands-on workshop on **long-running agents**, built with
+A two-hour hands-on workshop on **long-running agents**, built with
 [ADK 2](https://adk.dev) and Google Cloud.
 
-Students build an agent that buys concert tickets while they are asleep: it joins
-a queue of fourteen thousand people, stops running entirely for forty minutes,
-survives having its process killed, re-checks the world before it spends money,
-agrees a budget with a human, and finally ships to Cloud Run with a scheduler
-waking it at 3am.
+One task runs through the whole course:
 
-**The instructions live in [`docs/CODELAB.md`](docs/CODELAB.md).** Everything
-below is for whoever is running or maintaining the workshop.
+> Get two tickets to The Midnight Signal in Amsterdam, for me and Sam. We can
+> only do weekends, and we will not sit in the upper bowl. The agent may stop
+> running while it waits in the queue; when it is woken it checks the venue
+> again and buys inside the limit I confirmed — "Two tickets, up to $250 each."
+> In the end, a cloud timer finishes it.
 
----
+Same two people, same city, same preferences in every chapter. What changes is
+how much of the task the agent can finish without anyone at the keyboard.
 
-## The problem it teaches
-
-Every framework got better at what goes **in the prompt**. None of them got
-better at **being awake**.
-
-A long-running agent needs four things a chat assistant does not:
-
-1. **A clock of its own** — it starts without you
-2. **Facts that outlive the conversation** — and survive a summariser
-3. **Survival across process death** — crashes, deploys, closed laptops
-4. **Bounded authority** — a limit agreed while the human was still there
-
-The workshop teaches those four, in that order, against one scenario: a task that
-takes far longer than the conversation that started it, against a system you do
-not control.
+**Students read [`docs/CODELAB.md`](docs/CODELAB.md)** and work in the
+workbench. Everything below is for whoever runs or maintains the workshop.
 
 ---
 
-## The eleven steps
+## The four deep dives
 
-Each one adds a single idea, and each has complete working code in `solutions/`.
+Every framework got better at what goes in the prompt. None got better at being
+awake. A chat assistant lives inside one turn; this task takes forty minutes
+against a system you do not control. The course teaches four things a
+long-running agent needs, and each one is a required reading inside the chapter
+that exercises it:
 
-| # | Step | What it adds |
+| Deep dive | The question it answers | Where |
 |---|---|---|
-| 1 | Before you begin | setup, the venue, the seeded history |
-| 2 | Prompt your way to autonomy? | why no wording makes an agent proactive |
-| 3 | Event-Driven Dormancy | a trigger endpoint, and something that calls it |
-| 4 | Managing Context Lifetime | four places a fact can live: `temp:`, session, `user:`, a file |
-| 5 | Context Degradation? | compaction rewrites history behind your back |
-| 6 | Process Resumption | `LongRunningFunctionTool` + `ResumabilityConfig` |
-| 7 | Acting on Stale Data | `before_tool_callback`, and idempotency keys |
-| 8 | Autonomous Workflow | `Workflow` graphs, and `RequestInput` interrupts |
-| 9 | Working With a Human | human-in-the-loop inside a graph |
-| 10 | The Cloud Stack | one Cloud Run service, Cloud SQL, Cloud Storage, Pub/Sub, Scheduler |
-| 11 | What you built | the concept map, and a prompt for building your own |
+| **Memory** | Where is a fact kept, for how long, and how does it get into *this* run? | 3B, 3C |
+| **Resumption** | After the process dies, what exactly comes back? | 4C |
+| **Authority** | How is "they are comfortable around $200" different from "you may spend up to $250 tonight"? | 5A |
+| **Reliability** | Inventory moved, the response never came, the retry fired — how many orders are there? | 5B, 5C |
+
+Chapters 1 and 2 set the scene and prove that a prompt cannot start a run.
+Chapter 6 moves the same agent to Cloud Run and lets Cloud Scheduler wake it.
+
+---
+
+## The six chapters
+
+110 minutes of class, plus a 10-minute buffer. Installation, sign-in and the
+slow resource creation happen **before class** — see
+[`docs/PRE-WORK.md`](docs/PRE-WORK.md).
+
+| # | Chapter | Sections | Students can… | Minutes |
+|---|---|---|---|---|
+| 1 | Meet MonsterTix | 1A The mission · 1B Your workspace | say what the task is, and where to watch the queue, the stock and the orders | 5 |
+| 2 | Wake the Agent | 2A Prompt · 2B Caller | say who starts an invocation, and why no wording can | 10 |
+| 3 | Remember What Matters | 3A Session DB · 3B Memory Service · 3C Services & lifetimes | trace a fact from storage into the current run; read a compaction summary | 25 |
+| 4 | Pause, Restart, Resume | 4A Pause · 4B Kill & continue · 4C What resumed | kill the process mid-queue and prove the same ticket continues to *ready to buy* | 25 |
+| 5 | Buy Within Agreed Limits | 5A Authority · 5B Check the world again · 5C Retry once | confirm an authorization, survive a sell-out, retry a failed response and still hold one order | 30 |
+| 6 | Run It While You Sleep | 6A Move · 6B Cloud wake-up · 6C Explain & clean up | deploy, create a cloud task, let Scheduler resume it, tear it down | 15 |
+| | Buffer | questions, repairs, catching up | | 10 |
+
+Every section has the same shape: **the question → your turn → what you should
+see → key code → checkpoint**. Optional material (prompt variants, triggering
+compaction live, the `LongRunningFunctionTool` alternative, conditional budgets,
+Cloud Trace, deep SQL) sits in a final *Reference & optional* section with time
+and prerequisite labels, and never blocks the main line.
 
 ---
 
 ## Repo layout
 
 ```
-setup.sh                 one command: venv, auth, APIs, .env, seed, Cloud SQL, venue, workbench
-workbench.sh             the workbench on :4800: start, stop, restart
-verify.sh                eight ticks. run it before you trust anything
-use-solution.sh N        load step N's code and reset the world around it
-deploy-venue.sh          your own venue on Cloud Run
-deploy-agent.sh          the agent, the topic, the subscription, the schedule
+setup.sh                 pre-work, one command: venv, project, APIs, .env, seed, Cloud SQL (background), venue
+verify.sh                one screen of ticks. run it before you trust anything
+workbench.sh             the workbench on :4800: start, stop, restart, fg
+use-solution.sh N        load chapter N's code and reset the state around it (1..6)
+deploy-venue.sh          your own mock venue on Cloud Run (setup.sh runs it)
+setup-cloud-state.sh     Cloud SQL database + user + bucket; writes two URIs into .env
+deploy-agent.sh          chapter 6: Cloud Run service, topic, push subscription → /trigger/wake, Scheduler job
+destroy-agent.sh         chapter 6 clean-up (--all also drops Cloud SQL + the bucket)
 destroy-venue.sh         tear the venue down
-destroy-agent.sh         tear the agent down  (--all also drops Cloud SQL + bucket)
-setup-cloud-state.sh     database, user, bucket, and the two URIs, written to .env
 set_env.sh               source this in every new terminal
-show-compaction.sh       reads the compaction the dev UI will not show you
+show-compaction.sh       prints the compaction summaries the dev UI does not show
 
 agent/                   where students work. use-solution.sh writes here
-  concert/               the agent package
-  nightly/               the workflow graph, from step 8
-  monstertix/            the chat page and its server, from step 10
-  main.py, Dockerfile    the single-container entrypoint, step 10 only
+  concert/               the agent package (agent.py tools.py memory.py venue.py config.py panel.py,
+                         + nightly.py from chapter 4, + budget.py fence.py from chapter 5)
+  main.py, Dockerfile,   chapter 6 only: the single-container entrypoint and its
+  requirements.txt,      dependencies, plus a copy of monstertix/ so the page
+  monstertix/            ships inside the container
+
+monstertix/              the MonsterTix page, its server, and the clock (every chapter)
+  server.py              your own Runner behind your own endpoints, on :8090
+  handlers.py            what the endpoints DO — shared with agent/main.py
+  clock.py               the local stand-in for Cloud Scheduler
+  index.html             the page a person actually uses
 
 venue/                   the mock ticket seller. its own Cloud Run service
-  app.py                 queue, seatmap, purchase, and every admin button
+  app.py                 events, seat maps, queue, purchase, and every panel button
   static/                the control panel, the poster, the theme tune
 
-monstertix/              the chat frontend and the trigger, from step 3
-  server.py              your own Runner behind your own endpoint
-  clock.py               the local stand-in for Cloud Scheduler
-  handlers.py            what the endpoints DO, shared by both entrypoints
-  index.html             the page students actually hand to someone
-
-solutions/               one folder per step. use-solution.sh copies from here
-content/                 the workbench's steps: step.yaml and markdown, per step
-workbench/               the workbench server: processes, checks, the proxy
+solutions/               one folder per chapter: step1_meet … step6_cloud
+content/                 the workbench's chapters: step.yaml + markdown per section
+workbench/               the workbench server: processes, checks, the task card, the proxy
 web/                     the workbench page (React). Built by workbench.sh
-tests/                   one folder per step, mirroring solutions/
-seed/                    the two-days-ago conversation, and the memory file
+tests/                   one folder per chapter, mirroring solutions/
+seed/                    the two-days-ago session and the starting memory file
 docs/
-  CODELAB.md             the workshop itself
-  build-preview.py       renders CODELAB.md → preview.html. run after edits
-  DRYRUN.md              rehearsal checklist, per step
-  INSTRUCTOR.md          runbook: timing, what breaks, what to cut
+  PRE-WORK.md            what a student does before class
+  CODELAB.md             the course, as a codelab
+  INSTRUCTOR.md          runbook: minute plan, checkpoint answers, what breaks, clean-up
+  DRYRUN.md              rehearsal checklist with the evidence to collect
+  build-preview.py       renders CODELAB.md → preview.html
 ```
 
-### How a step gets loaded
+### How a chapter is loaded
 
-`use-solution.sh N` copies a solution folder into place, and where things land
-depends on what they are:
+`./use-solution.sh N` (N = 1…6) copies one solution folder into place:
 
-| In the solution folder | Goes to | Why |
+| In `solutions/stepN_*/` | Goes to | Why |
 |---|---|---|
-| `concert/`, `nightly/` | `agent/` | they are agent packages, and `adk web` reads that directory |
-| everything else | the repo root | `monstertix/` is a sibling of `agent/`, not an app inside it |
+| `concert/` | `agent/concert/` | the agent package; `adk web agent` reads that directory |
+| `monstertix/` | `./monstertix/` | the page, server and clock; `python -m monstertix.server` finds them at the root |
+| `main.py`, `Dockerfile`, `requirements.txt`, `monstertix/` *(chapter 6 only)* | `agent/` | `agent/` is the build context `deploy-agent.sh` uploads |
 
-It also resets the state around the code: `memory/userx.md` back to its seed,
-`sessions.db` rebuilt with the two-days-ago conversation, `artifacts/` emptied.
-Pass `--keep` for the code alone.
+**Every chapter ships both `concert/` and `monstertix/`**, so loading any
+chapter directly gives a consistent pair. Chapter 6's `concert/` is byte for
+byte chapter 5's.
 
-**One exception worth knowing.** `solutions/step3_the_trigger/` contains only
-`monstertix/` — step 3 changes nothing about the agent, which is the point of it.
-So `use-solution.sh 3` leaves whatever agent was staged before. Going 2 → 3 in
-order is correct; jumping to 3 from a later step leaves the wrong agent in place.
+Unless you pass `--keep`, it also resets the state around the code:
+`memory/userx.md` back to `seed/memory/default.md`, `sessions.db` rebuilt with
+the `two-days-ago` conversation, `artifacts/` emptied. It refuses to delete
+`sessions.db` while something holds :8000; `--force` overrides that. The venue
+is never touched — press **RESET THE VENUE** on the panel for that.
 
-### Three ports
+The workbench's **Load step N** button does the same thing: stop the agent,
+RESET THE VENUE, `./use-solution.sh N --force`, start the agent again. Its
+*Reset the venue* variant (used in 5C) resets the venue only and keeps code,
+sessions and memory, so the task under way keeps its session, ticket and
+authorization.
+
+### Three ports, and the workbench
 
 | | |
 |---|---|
-| **:8000** | `adk web` — the development UI. Best window into a run, not something you ship |
-| **:8080** | the venue. Control panel at `/panel` |
-| **:8090** | `monstertix/server.py` — the page at `/`, the endpoint at `/wake` |
+| **:8000** | `adk web` — the development UI. State, Events, Artifacts, the graph. Not something you ship |
+| **:8080** | the venue, when run locally. Deployed, it is `$VENUE_URL`; the panel is at `/panel` |
+| **:8090** | `monstertix/server.py` — the page at `/`, `POST /wake`, `POST /trigger/wake`, `GET /task` |
+| **:4800** | the workbench: every section as a page, the processes as switches, the current task card |
 
-Tests use **:8099** with their own database, so a test run can never reset the
-venue you are teaching from.
+Tests use **:8099** with their own venue database, so a test run never resets
+the venue you are teaching from.
+
+### One identity everywhere
+
+`app_name="concert"`, `user_id="user"` — in `adk web`, the MonsterTix server,
+`main.py`, the seed and the workbench. `adk web` hardcodes `userId=user` and
+has no user picker, so anything seeded under another id exists and is
+invisible. `MEMORY_USER=userx` names the memory **file** (`memory/userx.md`)
+and is not a user id.
 
 ---
 
 ## Setup
 
+Students do this before class — the full walk-through is
+[`docs/PRE-WORK.md`](docs/PRE-WORK.md). In short:
+
 ```bash
-git clone <REPO_URL> ~/longrunningag
-cd ~/longrunningag
-./setup.sh          # asks for a project id, once
-./verify.sh         # eight ticks
+git clone <REPO_URL> ~/monstertix
+cd ~/monstertix
+./setup.sh          # project, APIs, venv, .env, seed, Cloud SQL in the background, venue, workbench
+./verify.sh         # one screen of ticks
+./use-solution.sh 1
 ```
 
-`setup.sh` creates the virtualenv, signs in if needed, points `gcloud` at the
-project, enables ten APIs, writes `.env`, makes one real Gemini call so a bad
-model id fails immediately, seeds the two-days-ago session, starts a Cloud SQL
-instance **in the background** for step 10, and deploys the venue.
-
-**Every step of it is safe to re-run.** It reuses an existing `.venv`, remembers
-the project id in `~/project_id.txt`, skips APIs that are already on, and will
-not create a second Cloud SQL instance.
-
-### The workbench
-
-`setup.sh` finishes by starting the **workbench** on port 4800: every step of
-the codelab as a page, with the processes it needs as switches.
-
-```
-./workbench.sh            start it in the background (log: runs/workbench.log)
-./workbench.sh stop       stop it, and everything it started
-./workbench.sh restart    after a git pull: rebuilds the page if it changed
-./workbench.sh fg         in this terminal; Ctrl-C stops everything
-```
-
-In Cloud Shell, open it with Web Preview → Change port → 4800.
-
-| Where | What it is |
-|---|---|
-| **the step** | the reading, a file explorer that marks what the step changed and highlights the lines that matter, the numbered things to do, and checks that tick on their own |
-| **under each "Your turn"** | the app that card uses (the ADK web UI, the venue panel, the MonsterTix page), framed through the workbench at `/svc/<name>/` so one port is enough. Its process's switch and log are at the card's top right; the agent's card also has **kill -9**, for step 6 |
-| **left, in step 1 and wherever a part uses the venue** | the live venue panel, which folds away. The venue starts with the workbench and is always on |
-
-Each step's **Load step N** button does what the codelab does at the top of a
-step: stop the agent, press RESET THE VENUE, `./use-solution.sh N --force`,
-start the agent again.
-
-The steps are written in `content/`; see [`content/README.md`](content/README.md)
-for the format and for adding a language. After editing them, run
-`python -m workbench.check`. The server is `workbench/`, the page `web/`.
-
-### Credentials
-
-Vertex AI via Application Default Credentials. **No API keys anywhere** — not in
-`.env`, not in the repo, not on a slide.
+`setup.sh` is safe to re-run: it reuses `.venv`, remembers the project in
+`~/project_id.txt`, skips APIs already on, and never creates a second Cloud SQL
+instance. Credentials are Vertex AI via Application Default Credentials. **No
+API keys anywhere.**
 
 ```
 GOOGLE_CLOUD_PROJECT=<theirs>
-GOOGLE_CLOUD_LOCATION=global
+GOOGLE_CLOUD_LOCATION=global        # where the model is served
+GOOGLE_CLOUD_REGION=us-central1     # where the services live
 GOOGLE_GENAI_USE_VERTEXAI=true
 ADK_MODEL=gemini-2.5-flash
 ```
 
-> ⚠️ `gemini-flash-latest` is an AI-Studio-only alias and **404s on Vertex**.
-> The `-latest` aliases are simply absent from `models.list()`. Pin the id.
+> ⚠️ `-latest` model aliases are AI-Studio-only and 404 on Vertex. Pin the id.
 
-### Requirements
-
-- `google-adk >= 2.6.2`
-- Python **3.11+** — ADK 2's `Workflow` API requires it
-- Cloud Shell, or any machine with `git`, `gcloud` and Python
+Requirements: Python **3.11+** (ADK 2's `Workflow` needs it), `google-adk[db]
+>= 2.6.2`, `gcloud`, and Node if the workbench page has to be built. Cloud
+Shell has all of it.
 
 ---
 
 ## Laptop → cloud
 
-Step 10 shows this as the diff, and the point is how little is in it.
+Chapter 6 shows this as a diff, and the point is how little is in it:
 
 | On a laptop | In the cloud | What changes |
 |---|---|---|
-| `--session_service_uri=sqlite+aiosqlite:///…` | Cloud SQL | a connection string |
-| `--artifact_service_uri=file://…` | `gs://bucket` | a URI |
-| `memory/userx.md` | `gs://bucket/memory/` | a path |
-| `adk web` | one Cloud Run service | a `Dockerfile` and a `main.py` |
-| `monstertix/clock.py` | Cloud Scheduler → Pub/Sub | `trigger_sources=["pubsub"]` |
-| you, at the keyboard | `someone_is_there()` | a default, overridden per request |
+| `--session_service_uri=sqlite+aiosqlite:///…/sessions.db` | Cloud SQL (`postgresql+asyncpg://…?host=/cloudsql/…`) | a connection string |
+| `--artifact_service_uri=file://…/artifacts` | `gs://<bucket>/artifacts` | a URI |
+| `memory/userx.md` | `gs://<bucket>/memory/userx.md` | `MEMORY_DIR` |
+| `adk web` / `monstertix/server.py` | one Cloud Run service (`agent/main.py` + `Dockerfile`) | an entrypoint |
+| `python -m monstertix.clock --trigger` | Cloud Scheduler → Pub/Sub → `/trigger/wake` | who sends the POST |
 
 ```
-   root_agent, its tools, its callbacks and the budget:  UNCHANGED
+   the graph, its tools, budget.py, fence.py, the idempotency key:   UNCHANGED
 ```
 
-`solutions/step10_deploy/concert/` is byte-for-byte the folder students finish
-step 9 with. Credentials do not appear in that table because they never change:
-ADC on the laptop, ADC on Cloud Run. That is the argument for not using API keys,
-and it only lands because students never had one.
+`solutions/step6_cloud/concert/` is identical to `solutions/step5_buy/concert/`
+(a test holds that in place). Credentials do not appear in the table because
+they never change: ADC on the laptop, ADC on Cloud Run.
+
+Deploying does **not** migrate anything. A task parked in your laptop's
+`sessions.db` stays there. Chapter 6 creates a new task in the cloud and lets
+the scheduler finish that one.
 
 ---
 
 ## Testing
 
 ```bash
-./tests/run.sh
+./tests/run.sh            # offline, a few seconds
+./tests/run.sh --live     # drives the real model; minutes, costs tokens
 ```
 
-One folder per solution, mirroring `solutions/`. Tests that need a model are
-skipped unless `RUN_LIVE=1`. Everything else is offline and runs in about a
-second. Currently **38 passing, 10 skipped**.
+One folder per chapter, mirroring `solutions/`. Tests that need a model are
+skipped unless `--live`. Currently **62 passing, 7 skipped** offline. See
+[`tests/README.md`](tests/README.md) for what each chapter asserts.
 
 ---
 
 ## For instructors
 
-- **[`docs/INSTRUCTOR.md`](docs/INSTRUCTOR.md)** — timing, what breaks, what to
-  cut when you are running late, and what to say out loud
-- **[`docs/DRYRUN.md`](docs/DRYRUN.md)** — rehearse the whole lab locally, step
-  by step, before anyone else sees it
-Run the dry run at least once on a fresh clone. Most of what goes wrong in a room
-is state left over from the last rehearsal, and `use-solution.sh` exists to make
+- **[`docs/INSTRUCTOR.md`](docs/INSTRUCTOR.md)** — the 110 + 10 minute plan,
+  model answers to every checkpoint, what breaks and how to tell an expected
+  outcome from an environment fault, what to cut, the clean-up order.
+- **[`docs/DRYRUN.md`](docs/DRYRUN.md)** — rehearse every section locally and
+  collect the evidence it promises, including "start from chapter N" paths.
+
+Rehearse at least once on a fresh clone. Most of what goes wrong in a room is
+state left over from the last rehearsal, and `use-solution.sh` exists to make
 that recoverable in one command.

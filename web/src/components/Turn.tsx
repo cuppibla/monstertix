@@ -4,6 +4,7 @@ import { api, type Job, type PaneTab, type TurnItem } from "../lib/api";
 import { useBench } from "../lib/bench";
 import { useDock } from "./AppDock";
 import { ServiceControls, ServiceLog } from "./ServiceControls";
+import { ResumeButton, useTask } from "./TaskCard";
 import { t } from "../i18n";
 import { Inline } from "./Inline";
 
@@ -28,6 +29,7 @@ const ICON: Record<string, string> = {
   look: "👀",
   run: "$",
   clock: "⏰",
+  resume: "▶",
   text: "•",
 };
 
@@ -39,7 +41,18 @@ function kindOf(item: TurnItem): string {
   if (item.look) return "look";
   if (item.run) return "run";
   if (item.clock) return "clock";
+  if (item.resume) return "resume";
   return "text";
+}
+
+/* `resume: task`: the task card's button, in the numbered list. */
+function ResumeItem() {
+  const { task, reload } = useTask(3000);
+  return (
+    <div className="mt-1.5">
+      <ResumeButton task={task} onDone={() => reload()} />
+    </div>
+  );
 }
 
 function CopyLine({ text, tab, label }: { text: string; tab?: PaneTab; label: string }) {
@@ -225,20 +238,23 @@ function Item({ item, slug, task, index }: { item: TurnItem; slug: string; task:
     );
   } else if (kind === "run") {
     control = <RunItem slug={slug} task={task} index={index} command={item.run ?? ""} />;
+  } else if (kind === "resume") {
+    control = <ResumeItem />;
   } else if (kind === "clock") {
     const delay = item.clock?.in ?? 10;
     const every = item.clock?.every ?? 0;
+    const trigger = !!item.clock?.trigger;
     control = (
       <div className="mt-1.5">
         <button type="button" className="btn btn--solid" disabled={busy}
                 onClick={() => act(async () => {
-                  const r = await api.service("clock", "restart", { delay, every });
+                  const r = await api.service("clock", "restart", { delay, every, trigger });
                   return r.state === "stopped" ? t("The clock did not start; open its log on the left.") : t("The clock is set. Hands off the keyboard.");
                 })}>
           {every ? t("Fire every {every}s, first in {delay}s", { every, delay }) : t("Fire once, {delay}s from now", { delay })}
         </button>
         <code className="inline-code ml-2 text-[0.72rem]">
-          python -m monstertix.clock --in {delay}{every ? ` --every ${every}` : ""}
+          python -m monstertix.clock --in {delay}{every ? ` --every ${every}` : ""}{trigger ? " --trigger" : ""}
         </code>
         <ClockState />
       </div>

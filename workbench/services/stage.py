@@ -25,9 +25,18 @@ from workbench.services import procs
 RECORD = config.RUNS / "stage.json"
 SKIP = {"__pycache__", "artifacts", ".adk"}
 AGENT_EXTRAS = ("main.py", "Dockerfile", "requirements.txt")
+# The six stages, by chapter, as use-solution.sh names them. Fixed here for the
+# same reason it is fixed there: a stray folder in solutions/ must not become
+# a loadable stage, nor be mistaken for the one in place. Other stepN_*
+# folders are only read when none of these exist.
+STAGES = {1: "step1_meet", 2: "step2_wake", 3: "step3_remember",
+          4: "step4_resume", 5: "step5_buy", 6: "step6_cloud"}
 
 
 def steps() -> dict[int, Path]:
+    named = {n: config.SOLUTIONS / name for n, name in STAGES.items() if (config.SOLUTIONS / name).is_dir()}
+    if named:
+        return dict(sorted(named.items()))
     found = {}
     for folder in config.SOLUTIONS.glob("step*_*"):
         match = re.match(r"step(\d+)_", folder.name)
@@ -47,10 +56,10 @@ def _files(folder: Path) -> list[Path]:
 def layout(number: int) -> dict[str, Path]:
     """Where each file is once step `number` is loaded: repo path -> source.
 
-    Mirrors use-solution.sh: concert/ comes from the latest step that has one
-    (step 3 has none and leaves step 2's in place), the root monstertix/ from
-    the latest step that ships one, and agent/main.py and friends only from a
-    step that has them."""
+    Mirrors use-solution.sh: concert/ comes from the latest stage up to
+    `number` that has one (every stage does), the root monstertix/ from the
+    latest stage that ships one, and agent/main.py and friends only from a
+    stage that has them (step 6, the deployable copy)."""
     known = steps()
     placed: dict[str, Path] = {}
     concert = max((n for n, f in known.items() if n <= number and (f / "concert").is_dir()), default=None)
@@ -68,7 +77,9 @@ def layout(number: int) -> dict[str, Path]:
         for name in AGENT_EXTRAS:
             if (folder / name).is_file():
                 placed[f"agent/{name}"] = folder / name
-        if (folder / "monstertix").is_dir() and (folder / "concert").is_dir():
+        # The deployable stage (step 6) also carries a copy of monstertix/
+        # inside agent/, the build context deploy-agent.sh uploads.
+        if (folder / "main.py").is_file() and (folder / "monstertix").is_dir():
             for rel in _files(folder / "monstertix"):
                 placed[f"agent/monstertix/{rel}"] = folder / "monstertix" / rel
     return placed
@@ -111,8 +122,8 @@ def detect() -> dict[str, Any]:
     number = best[2]
     same, total = _score(number)
     recorded = _recorded()
-    # Steps 2 and 3 share an agent; so do 9 and 10 apart from the wrapper.
-    # The workbench's own record decides between equals.
+    # Two stages can share an identical agent/ (step 6 is step 5 plus the
+    # deployable wrapper). The workbench's own record decides between equals.
     if recorded is not None and recorded != number and _score(recorded) == (same, total):
         number = recorded
     return {"step": number, "edited": same < total}
@@ -145,11 +156,18 @@ def changes(since: int, to: int) -> dict[str, Any]:
     return {"since": since, "to": to, "files": files, "removed": removed}
 
 
-def load(number: int, reset_venue: bool = True) -> dict[str, Any]:
+def load(number: int, reset_venue: bool = True, scope: str = "all") -> dict[str, Any]:
     """Load a step the way the codelab does: stop what holds sessions.db,
-    RESET THE VENUE, `./use-solution.sh N --force`, start the agent again."""
+    RESET THE VENUE, `./use-solution.sh N --force`, start the agent again.
+
+    With scope="venue" only the venue is reset (orders, queue, inventory):
+    no code is copied, no process is stopped or started, sessions.db and the
+    memory file are untouched. That is the start of an experiment that reuses
+    the task already under way (chapter 5's retry)."""
     if number not in steps():
         return {"ok": False, "output": f"no solution for step {number}"}
+    if scope == "venue":
+        return {"ok": True, "output": venue_reset(), "scope": "venue", **detect()}
     was_running = {name: procs.status(name)["state"] in ("running", "starting")
                    for name in ("monstertix",)}
     output: list[str] = []
@@ -159,18 +177,6 @@ def load(number: int, reset_venue: bool = True) -> dict[str, Any]:
             output.append(f"→ stopped {name}")
     if reset_venue:
         output.append(venue_reset())
-    # A step that ships no agent (step 3) keeps whatever agent is in place.
-    # Coming from a later step, that would be the wrong one, so load the step
-    # whose agent it builds on first, as the README says to.
-    known = steps()
-    if not (known[number] / "concert").is_dir():
-        base = max((n for n, f in known.items() if n < number and (f / "concert").is_dir()), default=None)
-        if base is not None and _score(base)[0] < _score(base)[1]:
-            first = subprocess.run(["bash", "./use-solution.sh", str(base), "--force"],
-                                   cwd=config.ROOT, capture_output=True, text=True, timeout=120,
-                                   env=config.workshop_env())
-            output.append(f"$ ./use-solution.sh {base} --force")
-            output.append((first.stdout + first.stderr).strip())
     done = subprocess.run(["bash", "./use-solution.sh", str(number), "--force"],
                           cwd=config.ROOT, capture_output=True, text=True, timeout=120,
                           env=config.workshop_env())
@@ -178,14 +184,14 @@ def load(number: int, reset_venue: bool = True) -> dict[str, Any]:
     output.append((done.stdout + done.stderr).strip())
     if done.returncode == 0:
         RECORD.write_text(json.dumps({"step": number}))
-        # A fresh step starts a fresh prompt lab (step 2).
+        # A fresh step starts a fresh prompt lab (chapter 2).
         (config.RUNS / "prompt-tries.json").unlink(missing_ok=True)
         for name in ("agent", "monstertix"):
             if name == "agent" or was_running.get(name):
                 result = procs.start(name)
                 output.append(f"→ started {name}: {result['state']}")
     return {"ok": done.returncode == 0, "output": "\n".join(o for o in output if o),
-            **detect()}
+            "scope": scope, **detect()}
 
 
 def venue_reset() -> str:

@@ -1,0 +1,152 @@
+title: Meet MonsterTix
+kicker: Chapter 1
+minutes: 5
+color: purple
+venue: true             # the live venue panel in a left column, for the whole chapter
+stage: 1
+summary: >
+  One task for the whole course: two tickets to the Amsterdam show, for you and
+  Sam. This chapter shows you where that task plays out and where you watch it.
+parts:
+  - id: a
+    label: Mission
+    headline: The mission
+    body: a-mission.md
+    exercises:
+      look:
+        title: Find the four things you will watch all day
+        intro: >
+          Nothing to type yet. The venue panel on the left is the world the
+          agent works in. Find each section before you move on.
+        apps: [venue]
+        tasks:
+          - kind: turn
+            id: turn
+            items:
+              - text: >
+                  **The tour.** Eight shows, one artist. Find the two Amsterdam
+                  rows: Tuesday 10 Nov and Saturday 14 Nov, both at Ziggo Dome,
+                  and the three sections under each: A lower bowl, B upper bowl,
+                  C general admission.
+                look: venue
+              - text: >
+                  **The queue.** Empty now. When the agent joins, a ticket
+                  appears here at position #14,203 and counts down. The agent
+                  is not running while that number moves.
+              - text: >
+                  **Tickets bought.** Zero. The whole course should move this
+                  number to exactly one.
+              - text: >
+                  **What the agent is doing.** The activity feed. Every tool
+                  call the agent makes is narrated here, newest first. If this
+                  is still, the agent is not running.
+              - text: >
+                  **Workshop actions.** Leave them alone for now. The ‹ at the
+                  top of the column folds the panel away; › brings it back.
+    expect:
+      - "**The tour** lists `ms-ams-01` Saturday 14 Nov and `ms-ams-02` Tuesday 10 Nov, each with sections A $210, B $145 and C $95."
+      - "**The queue** is empty and **Tickets bought** says 0."
+      - "**What the agent is doing** is empty: nothing has run yet."
+    checks:
+      - id: venue
+        label: The venue is up and lists the Amsterdam Saturday show
+        probe: python3 -m workbench.probe url $VENUE_URL/events?city=Amsterdam
+        contains: ms-ams-01
+        hint: >
+          The venue starts with the workbench. If this stays red, run
+          `./workbench.sh restart` in a terminal and reload this page.
+      - id: clean
+        label: Nothing has been bought yet
+        probe: python3 -m workbench.probe orders --count 0
+        hint: >
+          An order is already on the panel from an earlier run. Press
+          **RESET THE VENUE** under Workshop actions; your chat history stays.
+
+  - id: b
+    label: Workspace
+    headline: Your workspace
+    body: b-workspace.md
+    exercises:
+      check:
+        title: Check the rig, load Chapter 1, open one log
+        intro: >
+          The full install happened before class (docs/PRE-WORK.md). Here you
+          only confirm it took, load this chapter's code, and look at one
+          service log so you know where to look when something is quiet.
+        apps: [agent, venue]
+        tasks:
+          - kind: prepare
+            id: prepare
+            step: 1
+            explain: >
+              Loading a chapter stops the agent, resets the venue, copies that
+              chapter's code into `agent/` and `monstertix/`, and starts the
+              agent again. Sessions and the memory file are not touched.
+          - kind: turn
+            id: turn
+            items:
+              - text: >
+                  Wait for the bar above to say the agent is **running**. The
+                  ADK web UI appears under this card, on the **agent** tab.
+                look: agent
+              - text: >
+                  At the top right of the agent card, press the **log** icon.
+                  Read the first lines: `adk web` started with
+                  `--session_service_uri` pointing at `sessions.db` and
+                  `--artifact_service_uri` pointing at `artifacts/`. Close it.
+              - text: >
+                  Open the code viewer below. `agent/concert/agent.py` is the
+                  whole agent; `monstertix/` is the server you start in
+                  Chapter 2. Both are the files that were just copied in.
+              - text: >
+                  Run the **Watch** checks at the end of this page. Every row
+                  shows the command it ran under **how**; a student with a
+                  terminal could run the same thing.
+          - kind: files
+            id: files
+            open: agent/concert/agent.py
+            stage: 1
+            highlight: '^root_agent = Agent\(|^    (name|model|instruction|tools)='
+            highlightLabel: 'The whole agent: a name, a model, an instruction, and three Python functions. `adk web` found it because the file is `agent.py` and the variable is `root_agent`.'
+    expect:
+      - "The agent card's switch says **running**, and the ADK web UI shows `concert` in its app list."
+      - "The agent's log begins with the `adk web` command line, including `--session_service_uri` and `--artifact_service_uri`."
+      - "The venue panel on the left reset: 8 shows, all seats available, 0 orders."
+    checks:
+      - id: adk
+        label: The ADK web UI is serving the `concert` app on :8000
+        probe: python3 -m workbench.probe url http://127.0.0.1:8000/list-apps
+        contains: concert
+        hint: >
+          Load Chapter 1 above and wait for **running**. If the switch goes
+          straight back to stopped, open the agent's log: a missing project or
+          credentials shows up on its last line.
+      - id: venue
+        label: The venue answers on its health route
+        probe: python3 -m workbench.probe url $VENUE_URL/health
+        contains: ok
+        hint: The venue starts with the workbench. Run `./workbench.sh restart` and reload.
+      - id: project
+        label: A Google Cloud project is configured for model calls
+        probe: python3 -m workbench.probe setting GOOGLE_CLOUD_PROJECT
+        hint: >
+          `.env` has no `GOOGLE_CLOUD_PROJECT`. Run `./setup.sh` again from the
+          repo root; it writes the project it finds or creates.
+      - id: memory
+        label: The memory file from past bookings is in place
+        probe: python3 -m workbench.probe memory --contains weekend
+        hint: >
+          `memory/userx.md` is missing or empty. `./setup.sh` restores it; so does
+          `git checkout memory/userx.md`.
+      - id: seeded
+        label: The seeded `two-days-ago` conversation is in sessions.db
+        probe: curl -s http://127.0.0.1:8000/apps/concert/users/user/sessions/two-days-ago
+        contains: two-days-ago
+        hint: >
+          Chapter 3 opens this conversation. If it is missing, run `./setup.sh`
+          (its **seed** step rebuilds it) and reload Chapter 1. The row also
+          needs the agent *running*: the question goes through `adk web`.
+      - id: code
+        label: Chapter 1's code is what is in `agent/`
+        probe: python3 -m workbench.probe file agent/concert/agent.py "Chapter 1 · Meet MonsterTix"
+        hint: Press **Load** on the Chapter 1 bar above.

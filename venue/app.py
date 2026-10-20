@@ -18,30 +18,35 @@ HOW A PURCHASE FLOWS
       │
       │  GET  /events              ──►  pick a show
       │  GET  /events/{id}/seatmap ──►  prices + a captured_at stamp
-      │                                 (holding this too long is MODULE 4)
+      │                                 (holding this too long is Chapter 5)
       │  POST /queue/join          ──►  ticket + position #14,203
       │                                 returns INSTANTLY, agent stops running
       │
       │       ~40 min of queue (press SKIP THE WAIT). agent not running.
       │
       │  GET  /queue/{ticket}      ──►  position, and whether it is your turn
-      │                                 (this is MODULE 4)
+      │                                 (the pause is Chapter 4)
       │  POST /purchase            ──►  reserve seats, write an order
-      │                                 Idempotency-Key optional (MODULE 4)
+      │                                 Idempotency-Key optional (Chapter 5)
       ▼
 
 ═══════════════════════════════════════════════════════════════════════════════
-WHERE EACH ACT'S BEAT LIVES  (search for the ACT tags)
+WHERE EACH CHAPTER'S MOMENT LIVES
 ═══════════════════════════════════════════════════════════════════════════════
 
-    MODULE 1  request log stays flat at 10am — nothing to do here, that's
-             the point. Nobody calls the agent.
-    MODULE 3  seatmap() returns captured_at, so students can see a snapshot age
-    MOD 4    join_queue() returns instantly — the agent parks on it
-    MODULE 4  sell_out() makes the snapshot a lie
-             hang_once() commits an order and then fails the response
-             Idempotency-Key is OPTIONAL, so the retry can buy twice
-    MODULE 6  drop_presale() fires the same message Cloud Scheduler sends at 3am
+    Chapter 2  Wake the Agent — the request log stays flat until something
+               calls the agent. Nothing here; that is the point.
+    Chapter 3  Remember What Matters — seatmap() returns captured_at, so a
+               saved seat map visibly has an age.
+    Chapter 4  Pause, Restart, Resume — join_queue() returns instantly and the
+               agent parks on the ticket; check_queue() says when it is your
+               turn; SKIP THE WAIT (advance_queue) sends it to the front.
+    Chapter 5  Buy Within Agreed Limits — sell_out() makes the old seat map a
+               lie; hang_once() commits an order and then fails the response;
+               the Idempotency-Key is OPTIONAL here, so only a caller that
+               sends one gets the original order back instead of a second.
+    Chapter 6  Run It While You Sleep — nothing special. Cloud Scheduler wakes
+               the agent; the venue just answers the same calls from the cloud.
 
 ═══════════════════════════════════════════════════════════════════════════════
 """
@@ -57,7 +62,6 @@ import threading
 import time
 import uuid
 
-import httpx
 from fastapi import Body, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
 
@@ -331,7 +335,7 @@ def list_events(artist: str = "", city: str = "", weekday: str = ""):
 
 @app.get("/events/{event_id}/seatmap")
 def seatmap(event_id: str):
-    """MODULE 3 / MODULE 4 — note `captured_at`.
+    """Chapter 3 / Chapter 5 — note `captured_at`.
 
     An agent that stores this and acts on it forty minutes later is holding a
     snapshot, and the snapshot is a lie.
@@ -393,10 +397,10 @@ def purchase(
 ):
     """Buy seats.
 
-    MODULE 4 — the Idempotency-Key header is deliberately OPTIONAL. Module 4 begins
-    with the agent not sending one, the platform retries after HANG ONCE, and
-    the tickets get bought twice. If the venue demanded a key there would be
-    nothing to teach.
+    Chapter 5 — the Idempotency-Key header is deliberately OPTIONAL. A caller
+    that retries WITHOUT one after BREAK THE NEXT PURCHASE buys twice; the
+    course's purchase tool retries WITH the same key and gets the original
+    order back. If the venue demanded a key there would be nothing to show.
     """
     # 1. Seen this exact purchase before? Hand back the original order.
     if idem_key:
@@ -459,9 +463,9 @@ def purchase(
     run("INSERT INTO orders VALUES (?,?,?,?,?,?,?,?)",
         (order_id, idem_key, event_id, section, seats, sec["price"], total, time.time()))
 
-    # 5. MODULE 4 — if HANG ONCE is armed, the order is already committed and the
-    #    caller is about to be told it failed. The platform retries. Without an
-    #    idempotency key, step 1 above cannot save them.
+    # 5. Chapter 5 — if BREAK THE NEXT PURCHASE is armed, the order is already
+    #    committed and the caller is about to be told it failed. The caller
+    #    retries. Without an idempotency key, check 1 above cannot save them.
     if setting("hang_once", "0") == "1":
         set_setting("hang_once", "0")
         log("purchase", f"{order_id} COMMITTED, then failed the response (hang-once)")
@@ -499,7 +503,7 @@ def advance_queue():
 
 @app.post("/admin/sellout")
 def sell_out(payload: dict = Body(...)):
-    """Step 7 — make the agent's snapshot a lie, on cue.
+    """Chapter 5 — make the agent's old seat map a lie, on cue.
 
     Sells out a section across EVERY show in a city, not one event. Picking a
     single event meant picking a row out of the tour listing, and the moment the
@@ -530,43 +534,16 @@ def sell_out(payload: dict = Body(...)):
 
 @app.post("/admin/hang-once")
 def hang_once():
-    """MODULE 4 — arm one purchase to commit and then fail its response.
+    """Chapter 5 — arm one purchase to commit and then fail its response.
 
-    The runtime's own retry does the rest. The double purchase is caused by the
-    platform, not by anything the student wrote.
+    The order is written, then the reply is a 500. The purchase tool retries
+    once with the SAME Idempotency-Key, and purchase() above hands back the
+    original order — one order, `duplicate: true`. Without the key there would
+    be two.
     """
     set_setting("hang_once", "1")
     log("admin", "next purchase armed to commit-then-fail")
     return {"hang_once": True}
-
-
-@app.post("/admin/drop-presale")
-def drop_presale():
-    """MODULE 6 — wake something up, with no human in the room.
-
-    The venue knows nothing about ADK, Pub/Sub or Cloud Scheduler. It POSTs an
-    opaque body to whatever URL it was configured with — the same rule the queue
-    webhook follows. A ticket seller has no business importing a cloud SDK.
-
-    Student plane:    PRESALE_TARGET_URL unset -> falls back to AGENT_URL.
-    Instructor plane: don't use this button. Cloud Scheduler has its own, and it
-                      fires the genuine production path:
-                          gcloud scheduler jobs run presale-drop --location=...
-    """
-    target = os.environ.get("PRESALE_TARGET_URL") or os.environ.get("AGENT_URL")
-    message = {"kind": "presale_drop", "artist": ARTIST}
-
-    if not target:
-        log("admin", "presale dropped (no target configured)")
-        return {"message": message, "note": "set PRESALE_TARGET_URL or AGENT_URL"}
-
-    try:
-        httpx.post(target, json=message, timeout=10)
-    except httpx.HTTPError as exc:
-        raise HTTPException(502, f"target unreachable: {exc}") from exc
-
-    log("admin", f"presale posted to {target}")
-    return {"posted_to": target, "message": message}
 
 
 @app.post("/admin/agent-event")

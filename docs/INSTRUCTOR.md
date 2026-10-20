@@ -1,367 +1,342 @@
 # Instructor runbook
 
-Everything you need that students don't. Read
-[`CODELAB.md`](CODELAB.md) for what they see, [`DRYRUN.md`](DRYRUN.md) for
-rehearsing it.
+Everything you need that students do not. [`CODELAB.md`](CODELAB.md) is what
+they see; [`DRYRUN.md`](DRYRUN.md) is how you rehearse it;
+[`PRE-WORK.md`](PRE-WORK.md) is what they did before they arrived.
 
 ---
 
 ## The thesis, in one line
 
-Every framework got better at what goes in the prompt. None got better at being
-awake.
+Every framework got better at what goes in the prompt. None got better at
+being awake.
 
-If you only land one thing, land Module 2: **waking up was never the hard part.**
-An agent that wakes with no memory, no durability and nobody listening is not
-yet worth waking, and Modules 3 to 5 are the reasons why.
+One task runs through the whole class — me and Sam, two Amsterdam tickets,
+weekend only, no upper bowl, "Two tickets, up to $250 each", finished by a
+cloud timer. If you only land one thing, land this: **an agent that promises to
+check later has not scheduled anything.** Chapters 3 to 6 are what has to be
+true before leaving it alone is reasonable.
+
+The four deep dives are required reading inside the chapters, not side pages:
+**Memory** (3B, 3C), **Resumption** (4C), **Authority** (5A), **Reliability**
+(5B, 5C). Do not let them get skipped by a room that is behind.
 
 ---
 
-## Two weeks before
+## Before the day
+
+### Two weeks before
 
 | | |
 |---|---|
-| **Confirm a project with billing** | `setup.sh` enables 9 APIs. That fails without billing, and no error message fixes it at 9am |
-| **Confirm students can enable APIs on it** | needs `serviceusage.services.enable`. If they can't, enable all 9 yourself beforehand and delete that block from `setup.sh` |
-| **Run `./setup.sh` yourself from a clean clone**, on the project students will use | this is the check that catches things |
-| **Decide: shared project or one each?** | one each is cleaner; shared is fine if quota holds — see below |
+| **A project with billing, per student or shared** | `setup.sh` enables ten APIs. Without billing it fails, and no message at 9am fixes that |
+| **Students can enable APIs** | needs `serviceusage.services.enable`. If not, enable them yourself beforehand |
+| **Run the pre-work yourself on a clean clone**, on the project students will use | this is the check that catches things |
+| **Publish PRE-WORK.md** with a hard "done by" date | the class has no setup time in it |
 
-### Cloud Build quota
+Thirty simultaneous Cloud Run deploys share one Cloud Build queue. The
+pre-work exists so that never happens in the room.
 
-Thirty simultaneous `./deploy-venue.sh` runs is thirty Cloud Build jobs in one
-project. Default concurrency will queue them, and a three-minute deploy becomes
-fifteen.
+### The night before
 
-Options, in order of preference:
+```
+[ ] ./verify.sh all green on a clean clone, on the students' project
+[ ] Cloud SQL RUNNABLE:  gcloud sql instances describe workshop-sessions --format='value(state)'
+[ ] ./use-solution.sh 6 && ./setup-cloud-state.sh && ./deploy-agent.sh
+    — run it once yourself. In class your deploy is a redeploy (~2 min) and
+    you have a known-good service to fall back on for 6B
+[ ] rehearse 4B and 5C at least (see DRYRUN.md) — they are the ones that
+    depend on timing
+[ ] ./use-solution.sh 1 so you start where they start
+[ ] collect the students' ./verify.sh output for anyone still red
+```
 
-1. **Stagger it.** The deploy is in Module 1; tell half the room to start it while the
-   other half reads. Nobody is blocked — the venue is not needed until Module 1 ends.
-2. **Pre-deploy** one venue per student the night before and hand out URLs. Costs
-   you an hour, removes the risk entirely.
-3. **Run the venue locally.** Set `VENUE_URL=http://127.0.0.1:8080` and skip the
-   deploy. You lose the "you deployed something to Cloud Run" moment, and step
-   10's diff gets weaker, but everything else works.
+Recommend to students, not require: `./setup-cloud-state.sh` once Cloud SQL is
+RUNNABLE. It takes a minute and turns Chapter 6 into a deploy only.
 
 ---
 
-## The night before
+## The plan: 110 + 10
 
-```
-[ ] publish the repo, public, no auth
-[ ] ./setup.sh from a clean clone on the students' project
-[ ] deploy the step 10 path: ./deploy-agent.sh, Pub/Sub topic + push
-    subscription → /trigger/wake, Cloud Scheduler job
-[ ] RUN STEP 10 FOR REAL AT 3AM so Cloud Trace has an ingested trace with a
-    genuine forty-minute gap in it
-[ ] rehearse M3 and M5 at least — see "what actually breaks"
-[ ] charge a jar of sourdough discard for the coda, if you're doing it
-```
+| Clock | Chapter | Section | Minutes | What must have happened before you move on |
+|---|---|---|---|---|
+| 0:00 | **1 Meet** | 1A The mission | 2 | everyone can point at queue, stock, orders on the panel |
+| 0:02 | | 1B Your workspace | 3 | Load step 1 done; one answer from the agent; `two-days-ago` in the dropdown |
+| 0:05 | **2 Wake** | 2A Prompt | 5 | proactive prompt swapped, sixty seconds of nothing watched |
+| 0:10 | | 2B Caller | 5 | clock fired, server log shows a run nobody typed; no order |
+| 0:15 | **3 Remember** | 3A Session DB | 8 | `user:prefs` seen, `temp:seatmap` absent, rows seen in the DB |
+| 0:23 | | 3B Memory Service | 8 | `recall` first, Saturday picked, `remember` wrote one line |
+| 0:31 | | 3C Services & lifetimes | 9 | the services table read, the compaction sample read |
+| 0:40 | **4 Resume** | 4A Pause | 8 | one ticket, parked on `queue:wait`, task card says *queue* |
+| 0:48 | | 4B Kill & continue | 9 | killed, restarted, resumed on the same ticket, SKIP THE WAIT, *ready to buy* |
+| 0:57 | | 4C What resumed | 8 | node counts read off the events; the rerun question answered |
+| 1:05 | **5 Buy** | 5A Authority | 10 | `authorization` in state, confirmed; parked in the queue |
+| 1:15 | | 5B Check the world | 10 | section A sold out, order lands in C, one order |
+| 1:25 | | 5C Retry once | 10 | venue reset, new session + budget, BREAK, retry, **one** order with `attempts: 2` |
+| 1:35 | **6 Cloud** | 6A Move | 4 | deploy started/finished, `/health` shows Cloud SQL + bucket |
+| 1:39 | | 6B Cloud wake-up | 8 | cloud task created, SKIP THE WAIT, job run, order appears on the page |
+| 1:47 | | 6C Explain & clean up | 3 | chain narrated; `destroy-agent.sh` run or scheduled for after class |
+| 1:50 | **Buffer** | | 10 | questions, repairs, anyone still on 5C |
 
-The 3am run matters. Trace ingestion lags by minutes, so a live-triggered run
-shows an empty page in front of the room. Last night's trace is there instantly
-and has a real gap in it.
+☕ If you break, break at **0:40**: storage is understood, nothing is parked yet.
 
----
+**Start `./deploy-agent.sh` during 5C's checkpoint discussion** (students who
+finished 5C run `./use-solution.sh 6 && ./deploy-agent.sh` and read 6A while it
+builds). That buys 6B its eight minutes.
 
-## Timing
+### What to cut when late
 
-120 minutes, six modules. The full breakdown is in
-[`AGENDA.md`](AGENDA.md) — this is the version you glance at while teaching.
+In this order. Each stands alone.
 
-| | Module | Ends | Cut? |
-|---|---|---|---|
-| **M1** | Fallacy of Autonomous Prompts & Local Setup | 00:15 | no — setup failures cost more later |
-| **M2** | Event-Driven Triggers & Persistence Mechanics | 00:35 | **never.** Everything after depends on it |
-| **M3** | Managing Context Lifetime & Preventing Information Loss | 00:55 | trim the artifact walkthrough, −4 min |
-| **M4** | Process Failure, Idempotency & Re-verification | 01:15 | drop the double-purchase half, −5 min |
-| **M5** | Autonomous Governance, Dynamic Pre-Auth & Envelopes | 01:40 | drop the overnight approval, −10 min |
-| **M6** | Unattended 3 AM Execution & Production Deployment | 02:00 | demo only, you drive |
-| | Wrap | 02:00 | |
+1. **6C's transfer question** → homework (−2 min).
+2. **4C's node counting** → you narrate it from your screen, they read the
+   table (−4 min). Keep the checkpoint question.
+3. **3A's database look** → show it from your terminal (−3 min).
+4. **5C** → demo it yourself rather than everyone doing it (−6 min). Never
+   drop it entirely; "no response ≠ no order" is half the Reliability dive.
+5. **6B done by you alone** on your night-before service, students watch
+   (−5 min). Their own deploy becomes homework with `destroy-agent.sh` attached.
 
-☕ Break at **00:35** if you want one. Setup is done, the payoff has not started.
-
-**If you are running long**, cut in this order: the overnight approval in M5,
-then the double-purchase half of M4, then the artifact walkthrough in M3. Each
-stands alone.
-
-**Do not cut Module 2.** Without watching the agent wake up badly, Modules 3 to
-5 become a list of features with no motivation.
-
-## What actually breaks
-
-Ordered by how likely it is to happen to you.
-
-**M3 · compaction may not lose Sam.** The beat depends on an LLM summary
-dropping one constraint, and sometimes it keeps it. If it holds: more turns,
-chattier early turns, or drop `compaction_interval` to 2. Rehearse this one.
-
-**The fence only fires on `purchase`.** The agent joins the queue first, so
-students must press SKIP THE WAIT and tell it it is at the front before anything
-can be refused. Say this before they start or you will field it eight times.
-
-**M5 · the two yeses may blur.** "Yes, buy it" versus "yes, raise my limit
-to $300". If it sets `new_limit` when the human only approved one purchase,
-that is the failure the step is about. Point at `user:budget` and show it
-moved.
-
-**Anywhere · the model claims it will monitor.** *"I'll keep an eye on that!"*
-Worse than silence, and a gift if it happens in M1 — it is exactly the
-illusion the step is dismantling.
-
-**`two-days-ago` is missing from the dropdown.** `adk web` addresses every
-session as `userId=user`, it is not configurable, and there is no user picker in
-the UI. `seed/session.py` writes under that id for exactly this reason — if
-someone sets `SEED_USER_ID`, the session will exist, answer over the API, and be
-invisible in the dropdown. Re-run `python -m seed.session`.
-
-**`asyncio.run() cannot be called from a running event loop`.** A tool called
-something async without being `async` itself. ADK already has a loop running
-when it invokes your tool, so `asyncio.run()` inside one always fails. Make the
-tool `async def` and `await` instead.
-
-**Cloud Shell idles out after ~1 hour.** `sessions.db` is in `$HOME` and
-survives. Restarting is Module 4 happening for free; say that rather than
-apologising.
-
-**`address already in use`** — something is already on the agent's port. Kill by
-port rather than by name: `lsof -ti:8000 | xargs kill -9`. If you are rehearsing
-with a local venue, the same applies to `:8080`.
+**Do not cut 2A, 4B or 5A.** Without watching the prompt do nothing, nobody
+believes the caller is necessary. Without the kill, resumption is a slide.
+Without the confirmation, Chapter 5 is "the agent bought a ticket".
 
 ---
 
-## Things worth saying out loud
+## What to say at each checkpoint
 
-**On ticket bots.** Someone will think it. Say it first: this runs against a
-mock venue each student deploys themselves, buying one allotment for
-themselves, inside limits they set. Real ticketing sites prohibit automation
-and the band is invented.
+The codelab has a model answer under every checkpoint. These are the five that
+carry the course, with what to listen for.
 
-**On `[EXPERIMENTAL]` warnings.** `EventsCompactionConfig` and
-`ResumabilityConfig` are pre-GA in 2.6.2. Students will see the warnings. Say it
-before they ask, and say that the APIs may move.
+**Chapter 2 — "The agent promised to check later. Why an external caller?"**
+Listen for *invocation*. The promise is text produced inside an invocation that
+has ended. Nothing exists between invocations: no process of the agent's, no
+timer, no loop. The instruction is read when a message arrives, and says
+nothing about who sends one. The clock did not change the agent; it changed
+who starts it. If someone says "a better prompt", send them to the Reference
+variants and ask them to come back with one that works.
 
-**On ChatGPT.** Someone will say "ChatGPT already does this." It does, and
-better in places. It is also asleep at 10am. The aside in Module 1 has the full
-answer — a chat session is a save file, what we are building is a server that
-kept running.
+**Chapter 3 — "Session DB and memory file still exist. Why does a new session
+not know what 'continue that order' means?"**
+Listen for *scope*. Task state — show, plan, ticket, authorization — is plain
+session state, one session's row. A new session id starts with empty session
+state and never reads another session's events. What crosses sessions is
+`user:` state and the memory file, and the file holds only explicit
+`remember()` writes, never the transcript. So the new session knows the
+person and not the task. Continuing a task means returning to that session,
+which is Chapter 4. Point at `sessions.state` vs `user_states` if the room
+wants proof.
 
-**On cost.** The venue scales to zero, so an idle one costs nothing. Delete it anyway.
-The clean-up command is in the handbook. Remind them at the end.
+**Chapter 4 — "Set `queue_up` to `rerun_on_resume=True`. Predict, measure, explain."**
+Make them predict first; most of the room will say *two tickets*. Then
+measure: **one**. Panel count unchanged, no second *joined* line in the feed,
+`queue_ticket` unchanged, the resumed invocation holds `check_front` only. In
+ADK 2.11 a node that finished is replayed from its recorded output whatever
+its flag says; the flag governs the node that holds the interrupt. Then the
+real question: so where does a second ticket come from? Listen for two
+sources. (1) Typing in the chat box instead of answering the interrupt — a
+**new invocation**, graph from the top, `queue_up` included (the most common
+way students get two tickets all day). (2) A crash between the venue accepting
+the join and the output being recorded — nothing to replay, node runs again:
+**at-least-once**. Neither is fixed by a flag, which is why `queue_up` is
+written to be safe to repeat and why `purchase` carries an idempotency key.
+The flag goes back to `False` because it documents intent.
+
+**Chapter 5A — "$250 in history ≠ authorization now."**
+Listen for *scope* again, and *who*. The file describes the person: no seat
+count, no task, no confirmation, no time. The authorization is an instruction
+for this task, read back, confirmed, with numbers code can compare, stored in
+this session. `budget.load` returns `None` without `confirmed: true`; the guard
+refuses with `no_authorization`. And nothing automatic may supply one: a
+`budget:` interrupt is only ever answered by a person. If someone asks "why not
+a default budget for 3am", the answer is that a default nobody remembers
+choosing is not a limit.
+
+**Chapter 5C — "No response ≠ no order."**
+Listen for *commit before response*. The venue writes the order and then
+answers; a failure after the write is indistinguishable from one before it. So
+the caller learns nothing from silence, and the fix is not to find out but to
+make the retry safe: the same `Idempotency-Key`, derived from session + event +
+section + seats, lets the venue return the original order with
+`duplicate: true`. `attempts: 2`, one order id, one row. If someone proposes
+"check the orders list before retrying", point out the same network that lost
+the response can lose the check.
+
+Also worth saying out loud, once:
+
+- **On ticket bots.** Say it before they think it: a mock venue each student
+  deploys, one allotment, limits they set, an invented band.
+- **On `[EXPERIMENTAL]` warnings.** `EventsCompactionConfig` and
+  `ResumabilityConfig` are pre-GA. The warnings are expected; the APIs may move.
+- **On "ChatGPT already does this."** It does, and it is asleep at 10am. A chat
+  session is a save file; this is a server that kept running.
+- **On cost.** Everything scales to zero except Cloud SQL and the bucket.
+  `./destroy-agent.sh --all` at the end, and say it twice.
 
 ---
 
-## The shape of the argument
+## What breaks, and what to do
 
-Useful to have in your head, because students ask "why this order":
+The most useful skill in the room is telling an **expected outcome of the
+experiment** from an **environment fault**. First table: things that look like
+failures and are the lesson. Second table: actual faults.
 
+### Expected outcomes that look like failures
+
+| What they see | What it is | What to say |
+|---|---|---|
+| 2A: *"I'll keep an eye on it!"* and then nothing | the lesson | "It said it would. What is running right now?" |
+| 3B/5B: the agent takes section B | the model ignoring the memory file | not a bug in the code: the honest cost of leaving the choice to a model. Ask it why. In 5B the guard still only checks price and stock; B is under $250. The buyer instruction forbids B, and usually holds |
+| 5B: the buyer reads the seat map before its first `purchase` | the model not following step 1 of its instruction | the order still lands in C, but the room misses the refusal. Point at the instruction and the `brief` text; note it for the prompt |
+| 4B: after SKIP THE WAIT, Resume says *nothing is paused* or `[check_front] ticket gone` | the front-of-queue hold expired (≈1,000 people's worth of queue time; at 1× about three minutes, at 60× seconds) | a real venue does this. New session, and keep the clock at 1× when you press SKIP THE WAIT |
+| 5A: the run asks the budget question again after a wrong-shaped answer | `budget.parse` refusing *"whatever it costs"* | the agent is asking for the shape the guard can check. Say it the example way |
+| 5B: the first `✓ purchase` is `"reason": "stale_plan"` | the guard refusing the old plan — by design, every time | that is the experiment, not an error: the buyer is told to try the plan first. Watch it re-read and pick C |
+| 5C: `[purchase] venue answered 503 — retrying` | the experiment | this is the moment. Count the orders |
+| 6B: logs say *not resuming web-…: waiting for a person to answer* | the scheduler fired while the cloud task was on `budget:ask` | correct behaviour. Answer the question on the page, fire again |
+| 6B: `nothing is waiting` | the task already finished, or SKIP THE WAIT was not pressed and the run re-parked | check `/task`; press SKIP THE WAIT; fire again |
+| Chapter 4+: *Resume current task* is disabled with *waiting for you* | the run is on a person's question | answer it in the ADK web UI's `adk_request_input` box |
+
+### Environment faults
+
+| Symptom | Cause | Recovery |
+|---|---|---|
+| A second queue ticket on the panel | they typed in the chat box instead of the `adk_request_input` reply box; a new invocation replayed the graph | RESET THE VENUE, New Session, start again. Use **Resume current task** from now on |
+| `two-days-ago` missing from the dropdown | seeded under a different user id, or `sessions.db` replaced | `.venv/bin/python -m seed.session`. The id must be `user` |
+| Dropdown empty / app will not load | a stray folder under `agent/` (e.g. `memory/` from running something inside it) | `ls agent/`; `./use-solution.sh N --force` tidies it |
+| `address already in use` | something on :8000 / :8090 | `lsof -ti:8000 \| xargs kill -9` |
+| `VENUE_URL is not set` | terminal without `set_env.sh` | `. ./set_env.sh` |
+| `asyncio.run() cannot be called from a running event loop` | a student's own tool called something async without being `async def` | make the tool `async def` and `await` |
+| Compaction error *No LlmAgent model available for event compaction summarizer* | a student removed the `summarizer=` line while the root is a Workflow | put it back; a graph has no model to borrow |
+| Model 404 | `-latest` alias | `ADK_MODEL=gemini-2.5-flash` in `.env` |
+| 403 from Vertex on a fresh project | APIs still propagating | wait a few minutes; `./verify.sh` |
+| `setup-cloud-state.sh`: instance still `PENDING_CREATE` | Cloud SQL not finished | it takes 8–12 minutes; this is why it is pre-work. Pair them with a neighbour for 6B |
+| `deploy-agent.sh`: `agent/main.py is missing` | Chapter 6 not loaded | `./use-solution.sh 6` |
+| `deploy-agent.sh` warns *sqlite in /tmp — this DIES with the container* | `.env` has no `CLOUD_SESSION_SERVICE_URI` | `./setup-cloud-state.sh` first, then redeploy |
+| Container fails to start on Cloud Run | `GOOGLE_CLOUD_PROJECT` missing in the env (config.py exits at import), or a `@` in the URI split on a comma | `deploy-agent.sh` already passes both and uses the `^\|^` delimiter; if they edited it, diff against the repo |
+| `Job.state must be ENABLED` | a paused scheduler job | `gcloud scheduler jobs resume presale-<you> --location=$GOOGLE_CLOUD_REGION` |
+| Cloud Shell idled out | ~1 hour | `./workbench.sh`. `sessions.db` survived — Chapter 4 for free; say so instead of apologising |
+| Everything is strange | leftover state | RESET THE VENUE, then `./use-solution.sh N` (Load step N) |
+
+### Repairs in one line
+
+```bash
+./use-solution.sh N                 # a student's agent is wrecked: code + state back to chapter N
+# RESET THE VENUE on the panel      # their venue is in a strange state
+rm sessions.db && .venv/bin/python -m seed.session     # their session history is confusing them
+./setup.sh                          # nothing works and you have four minutes: safe to re-run
 ```
-M1  an instruction cannot invoke anything       → something must call it
-M2  so here is that something                   → it wakes, and it is useless
-      ├ no idea who you are, reads a paraphrase → M3
-      ├ nothing survives, acts on stale facts   → M4
-      └ no limit on spending, some questions
-        cannot wait                             → M5
-M6  the same trigger, deployed                  → someone else's cron
-```
 
-Modules 3 to 5 each remove a reason not to leave the agent alone.
+The `solutions/` folders map one-to-one onto chapter numbers. Anyone who falls
+behind loads the next chapter and rejoins.
 
 ---
 
 ## Three surfaces, one agent
 
-Students meet all three. Worth being able to place them instantly:
-
 | | Where | What it is |
 |---|---|---|
-| `adk web` | Modules 1–5 | the dev UI. State, Events, Artifacts tabs |
-| a bare `Runner` | Module 2 | ~6 lines. What `adk web` was hiding |
-| `get_fast_api_app` | Module 6 | the same Runner behind an HTTP endpoint for Pub/Sub |
+| `adk web` | Chapters 1–5 | the dev UI: State, Events, Artifacts, the graph. Answers interrupts in the event's reply box |
+| `monstertix/server.py` | Chapter 2, and the Resume button's fallback | your own Runner behind `/wake` and `/trigger/wake`, on :8090 |
+| `agent/main.py` on Cloud Run | Chapter 6 | `get_fast_api_app` plus the same handlers, in one container |
+
+All three use `app_name="concert"`, `user_id="user"`, and (locally) the same
+`sessions.db`. That is why a task started in one is visible from the others.
 
 ---
+
+## Clean-up
+
+### Order
+
+```
+1. Scheduler job          gcloud scheduler jobs delete presale-<you>
+2. Push subscription      gcloud pubsub subscriptions delete presale-<you>-push
+3. Topic                  gcloud pubsub topics delete presale-<you>
+4. Cloud Run service      gcloud run services delete concert-<you>
+5. Cloud SQL instance     gcloud sql instances delete workshop-sessions        (--all)
+6. Bucket                 gcloud storage rm -r gs://<project>-agent-<you>      (--all)
+7. The venue              ./destroy-venue.sh
+```
+
+`./destroy-agent.sh` does 1–4; `--all` adds 5–6; the venue is separate. The
+schedule goes first so nothing fires at a half-deleted stack. Safe to run twice:
+everything already gone is reported as *absent*.
+
+### Confirm
+
+```bash
+gcloud scheduler jobs list --location=$GOOGLE_CLOUD_REGION      # no presale-<you>
+gcloud pubsub topics list                                        # no presale-<you>
+gcloud run services list --region=$GOOGLE_CLOUD_REGION           # no concert-<you> (and no venue-<you> after destroy-venue)
+gcloud sql instances list                                        # no workshop-sessions
+gcloud storage ls                                                # no <project>-agent-<you>
+grep -c 'AGENT_SERVICE_URL\|CLOUD_SESSION_SERVICE_URI' .env       # 0
+```
+
+The service URL answers 404 once the service is gone; the local `sessions.db`,
+`memory/` and `artifacts/` are untouched and `use-solution.sh` resets them.
+
+Cloud SQL (`db-f1-micro`) and the bucket are the two things that keep billing
+with nothing running. Say so at 1:47 and again at 2:00. Students who want to
+keep experimenting keep them; everyone else runs `--all`.
+
 ---
-
-## Generating the code with an assistant
-
-Nobody hand-writes most of this at work, and students will ask. Below is a
-usable prompt per step, and — more useful — **what an assistant reliably gets
-wrong about ADK**.
-
-Every warning here cost a real debugging cycle while building this workshop.
-They are worth reading before you teach it, because if a student generates their
-own version rather than running `use-solution.sh`, this is where they will get
-stuck and you will be asked why.
-
-
-### Prompt your way to autonomy?
-
-> Add a `purchase` tool to an ADK agent. It POSTs to `/purchase` on a service at
-> `$VENUE_URL` with `{event_id, section, seats}` and returns the order or an
-> error. Write the docstring so the model only calls it when it already knows all
-> three, and never guesses on the user's behalf.
-
-**Gets wrong:** Docstrings are the tool schema, so an assistant will happily invent parameters that sound plausible. We shipped a `search_events(artist=...)` for a venue that sells one artist, and the model dutifully asked *"which artist?"* instead of calling anything. **Read every generated docstring as if you were the model.**
-
-
-### Event-Driven Dormancy
-
-> Two files, and keep them separate.
->
-> 1. `server.py` — a FastAPI app with one POST endpoint that runs an ADK agent
->    once via `Runner.run_async` and returns what it said. Import `root_agent`
->    from a sibling package. Use `InMemorySessionService` and open a new session
->    per request.
-> 2. `clock.py` — a CLI that POSTs to that endpoint on a schedule. Flags `--in`,
->    `--every`, `--message`. It must not import ADK at all.
-
-**Gets wrong:** Ask for them in one file and you will get one file, with the clock and the Runner tangled together. Naming the separation in the prompt is what keeps `clock.py` free of ADK — and that is the only reason you can delete it later and put Cloud Scheduler in its place.
-
-
-### Managing Context Lifetime
-
-> Implement `BaseMemoryService` from `google.adk.memory` backed by a Markdown
-> file per user. `add_session_to_memory` appends the user's turns under a dated
-> heading; `search_memory` returns the whole file as a single `MemoryEntry` in a
-> `SearchMemoryResponse`. Then add two thin tools, `recall()` and `remember(fact)`,
-> that call it.
->
-> Also add a `note_companion(name, constraint)` tool that writes to
-> `state["user:prefs"]`, and change `get_seatmap` to save the full map with
-> `tool_context.save_artifact` and return only a summary.
-
-**Gets wrong:** A tool that awaits anything has to be `async def` — assistants
-write `asyncio.run()` inside a sync tool, which always raises inside ADK. Also:
-ask for "memory" without naming `BaseMemoryService` and you will get a dictionary, or a vector database you did not want. **Name the interface.** Also check the state prefixes — assistants write `state["prefs"]` when you meant `state["user:prefs"]`, and the difference only shows up two steps later.
-
-
-### Context Degradation?
-
-> Wrap my ADK agent in an `App` with `EventsCompactionConfig` so older turns get
-> summarised, and add a `budget_split` sub-agent that does ticket arithmetic with
-> `include_contents="none"` and an `output_key`. Expose the `App` as a module-level
-> `app` so `adk web` picks it up.
-
-**Gets wrong:** `EventsCompactionConfig` requires **both** `compaction_interval` and `overlap_size` — there is no default for the second, and an assistant working from memory will omit it. `compaction_interval` also counts *invocations*, not events; ask for "every 20 events" and you will get something that never fires during a workshop.
-
-
-### Process Resumption
-
-> Make the queue-joining tool a `LongRunningFunctionTool` that returns
-> immediately with a ticket, and turn on `ResumabilityConfig(is_resumable=True)`
-> on the `App`. Then write a separate poller that asks the venue for tickets that
-> have reached the front and POSTs the stored wake payload to the agent.
-
-**Gets wrong:** Two things get fumbled. Assistants suggest `--session_service_uri=sqlite:///...`, which builds an engine that fails on the first write — ADK drives SQLAlchemy through its **asyncio** extension, so it must be `sqlite+aiosqlite://` with `aiosqlite` and `greenlet` installed. And they will write the poller as a loop *inside the agent*, which is the one arrangement that defeats the point.
-
-
-### Acting on Stale Data
-
-> Add a `before_tool_callback` that runs before any purchase: re-fetch live
-> inventory, and short-circuit with an explanatory dict if the seats are gone or
-> the price moved. Separately, send an `Idempotency-Key` header derived from
-> session id, event, section and seat count so a retry of the same purchase is
-> recognised.
-
-**Gets wrong:** Ask for "retry safety" and you will get retry *logic* — backoff, a retry decorator, a circuit breaker. That is the opposite of what you want. The fix is to make the operation safe **to** repeat, not to repeat it more cleverly. Say "idempotency key" explicitly.
-
-
-### Draw a fence around the money
-
-> Add a spending budget in `user:` state — one number, max price per seat,
-> excluded weekdays, allowed cities, max purchases — and check it in the existing
-> `before_tool_callback`. When a purchase falls outside it, hand off to a
-> sub-agent declared with `mode="task"` and an `output_schema`, so the run pauses
-> until a human answers and the answer is validated.
-
-**Gets wrong:** `mode="task"` is ADK 2 and pre-GA, so assistants trained on older material will reach for a loop that asks and waits, or a `while not approved` — both of which burn tokens and never actually pause. If the generated code has no `mode=`, it is not pausing.
-
-
-### The approval that comes back tomorrow
-
-> Before joining the queue, add a tool that reads live seat counts and queue
-> depth and reports which sections are likely to be gone by the front — no
-> guessing, only arithmetic on real numbers. Add a second tool that records the
-> human's conditional answer as a plan in `user:` state. The purchase check should
-> clear a breach only when the plan covers it **and** its condition currently
-> holds.
-
-**Gets wrong:** Assistants love to make the agent *predict*. Ask for "anticipate problems" and you will get an agent inventing the idea that prices might rise, with nothing behind it. Insist that every number comes from a tool call. Also watch the conditional: "$280 is fine if the cheap seats are gone" must verify the condition at purchase time, not at the time it was agreed.
-
-
-### The 3am run
-
-> Rewrite the unattended flow as an ADK 2 `Workflow`: function nodes for picking
-> a show, queueing and buying, and a single agent node at the end that writes the
-> message a human reads over breakfast. Then expose it for Pub/Sub with
-> `get_fast_api_app(agents_dir=..., web=False, trigger_sources=["pubsub"])`.
-
-**Gets wrong:** Assistants will offer to deploy this to Agent Engine. **It cannot work** — trigger endpoints exist only on Cloud Run and GKE. They will also leave the session service unset, and trigger sessions default to in-memory and vanish, so the 3am run forgets it was ever in a queue.
-
 
 ## Why it is built the way it is
 
-The decisions below are not obvious from the code, and each one has a wrong
-answer that looks reasonable. If somebody in the room asks "why not just…",
-this is the section that answers them.
+Each decision below has a wrong answer that looks reasonable.
 
-**Why the concert booker.** Earlier candidates: an expense approver (no
-consequential action), a sourdough coach (the agent cannot act, its only actuator
-is a notification), a CI bot (too hardcore), a trip booker (too common). The
-concert booker is the only one where the agent must act *while the human is
-unavailable*, which is what forces the agreed-budget pattern in step 9.
+**Why one continuous task.** Earlier versions changed city and party size per
+step; students spent the first minutes of every step re-understanding a
+scenario instead of the mechanism. Two people, Amsterdam, weekend, no upper
+bowl, in every chapter, means the only thing that changes is what the agent can
+do.
+
+**Why the concert booker.** It is the scenario where the agent must act *while
+the human is unavailable*, which is what forces the agreed-authorization
+pattern. An expense approver has no consequential action; a trip booker is too
+common.
 
 **Why each student deploys their own venue.** A shared one means the moment
 somebody presses **SELL THE GOOD SEATS**, everyone else's agent fails for no
-visible reason. Half this workshop is deliberately breaking things, so isolation
-is not optional. It also gets `gcloud run deploy` in front of them in the first
-ten minutes, so step 10 is not the first time they have seen it.
+visible reason. Half the course is deliberately breaking things.
 
-**Why the agent stays local until step 10.** Students edit it at every step. Nine
-deploys would cost twenty minutes of a two-hour workshop.
+**Why the weeknight show is cheaper and listed first.** It is the trap the
+memory lesson rests on. Price alone or order alone picks the Tuesday. Only the
+memory file stands between the agent and that mistake. A student whose agent
+books a Tuesday is seeing the lesson, not a bug.
 
-**Why the weeknight shows are cheaper and listed first.** This is the trap the
-whole memory lesson rests on, so do not let it pass unnoticed in step 1. Every
-weeknight show is $10 a seat cheaper than the weekend one beside it, and it
-appears first in the city. It is therefore what an agent reaches for on price
-alone, or on order alone, and it is the wrong answer for somebody whose friend
-never turns up on a weeknight. The only thing standing between the agent and that
-mistake is a memory file it wrote after the last booking. If a student's agent
-books a Tuesday, that is the lesson landing, not a bug.
+**Why the Workflow, not `LongRunningFunctionTool`, on the main line.** The
+graph records each node's output, replays finished nodes on resume and reruns
+the interrupted one — and reading that off the events *is* the Resumption
+deep dive. The tool-based path is in the Reference.
 
-**Why Vertex and ADC rather than an API key.** It makes step 10's diff honest:
-the credential model is identical on a laptop and on Cloud Run, so the swap table
-has nothing to say about auth. A key would make the workshop easier to start and
-the punchline weaker.
+**Why Chapter 4 stops at ready to buy.** Mixing "did the same ticket survive"
+with "was the purchase authorized" in one chapter meant neither question got a
+clean answer. Now 4B's evidence is a ticket and 5A's is an authorization.
 
-**Why SQLite for sessions.** `sqlite3 sessions.db "select * from events"` puts a
-session on screen as rows. Cloud SQL through a proxy never feels that direct.
+**Why the authorization is session state and not `user:`.** Under `user:` it
+silently governs every future run and the person is never asked again. A
+limit that has to be re-agreed is the honest trade.
 
-**Why Cloud Run and not Agent Runtime for step 10.** Agent Runtime cannot receive
-scheduled or event-driven triggers. This is not a preference, and it is worth
-saying plainly if somebody asks why you did not use the managed option.
+**Why no default budget for the unattended path.** A scheduler that fills in a
+budget is a scheduler spending your money. A run parked on `budget:ask` at 3am
+stays parked, and that is correct.
 
-**Why `seed()` upserts rather than `INSERT OR IGNORE`.** Anyone who ran an
-earlier version of this workshop has a `venue.db` holding the old dates and
-prices. `INSERT OR IGNORE` would leave them there for ever, with no error and
-nothing on screen to explain why their agent is reasoning about numbers nobody
-else in the room can see. The upsert corrects the catalogue on startup and
-deliberately leaves `sold` alone, so re-seeding never un-sells anything.
+**Why the scheduler reaches `/trigger/wake` and not ADK's Pub/Sub route.** The
+built-in route mints a fresh session per message. Right for "fire an agent at
+something", wrong for "finish the thing you started".
 
-## If something is badly broken mid-workshop
+**Why Cloud Run, not Agent Engine.** Agent Engine cannot receive scheduled or
+event-driven triggers. Not a preference.
 
-```bash
-# a student's agent is wrecked
-./use-solution.sh N
+**Why Vertex and ADC, not an API key.** The credential model is identical on a
+laptop and on Cloud Run, so the Chapter 6 diff has nothing to say about auth.
 
-# their venue is in a strange state
-# → RESET THE VENUE on the panel
+**Why SQLite locally.** A session as rows you can `select` from. Cloud SQL
+through a proxy never feels that direct, and the Chapter 6 diff is the point.
 
-# their session history is confusing them
-rm sessions.db && python -m seed.session
-
-# nothing works and you have four minutes
-./setup.sh          # safe to re-run, fixes auth/APIs/seed
-```
-
-The `solutions/` folders map one-to-one onto codelab step numbers. Anyone who
-falls behind copies forward and rejoins.
+**Why deploying does not migrate the local task.** It could, and it would
+teach the wrong thing: that state follows the code. State follows the store.
+Chapter 6 creates a new task in the cloud store and the scheduler finishes that
+one.

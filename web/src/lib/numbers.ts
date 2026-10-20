@@ -1,20 +1,15 @@
 /* Page numbers versus solution numbers.
 
-   The Load buttons load the codelab's solution folders (`use-solution.sh 8`
-   for the workflow), but the workbench numbers its pages without the step it
-   leaves out, so the workflow is step 7 here. Everything the page shows says
-   the page's number; only the request to the server uses the folder's. */
+   Chapters and solution stages are 1:1 now (chapter 4 loads
+   `use-solution.sh 4`), so the number a page shows is the number the server
+   is asked for. The function stays so every call site reads the same; it
+   only ever returns what it is given. */
 
-let pageFor: Record<number, number> = {};
-
-export function setStages(steps: { order: number; stage: number | null }[]) {
-  // If two pages share one solution, the first page names it.
-  pageFor = {};
-  for (const s of steps) if (s.stage != null && !(s.stage in pageFor)) pageFor[s.stage] = s.order;
+export function setStages(_steps: { order: number; stage: number | null }[]) {
+  /* nothing to map: stages are chapters */
 }
 
-/** The page number a solution step is shown as. */
+/** The page number a solution step is shown as: the same number. */
 export function shown(solution: number | null | undefined): number | string {
-  if (solution == null) return "";
-  return pageFor[solution] ?? solution;
+  return solution == null ? "" : solution;
 }

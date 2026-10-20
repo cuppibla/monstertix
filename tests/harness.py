@@ -8,8 +8,9 @@ codelab shows them".
 Two kinds of test, and the split matters because one kind is free and the other
 is not:
 
-    structural   no model calls. Does step 6 actually wrap join_queue in a
-                 LongRunningFunctionTool? Is compaction on? Milliseconds.
+    structural   no model calls. Does `queue_up` really have
+                 rerun_on_resume=False? Does the guard refuse without an
+                 authorization? Milliseconds.
 
     behavioural  drives the real agent against the real venue with the real
                  model. Slow (a minute or more each) and costs tokens, so they
@@ -28,6 +29,7 @@ import importlib
 import os
 import pathlib
 import sys
+import types
 import warnings
 
 import httpx
@@ -47,29 +49,94 @@ needs_model = pytest.mark.skipif(
 
 # --- loading one step's package ------------------------------------------
 
+_SCRATCH_MEMORY: pathlib.Path | None = None
+
+
+def scratch_memory() -> pathlib.Path:
+    """A throwaway copy of memory/ for this test run.
+
+    The buyer calls remember() at the end of a live run, and that writes to
+    MEMORY_DIR. Pointing it at the repo's memory/ would leave every test's
+    outcome in the file students open in chapter 3.
+    """
+    global _SCRATCH_MEMORY
+    if _SCRATCH_MEMORY is None:
+        import shutil
+        import tempfile
+        _SCRATCH_MEMORY = pathlib.Path(tempfile.mkdtemp(prefix="monstertix-memory-"))
+        src = ROOT / "memory"
+        if src.is_dir():
+            for f in src.glob("*.md"):
+                shutil.copy(f, _SCRATCH_MEMORY / f.name)
+    return _SCRATCH_MEMORY
+
+
 
 def load_step(step: str):
     """Import `concert` from one solution folder, in isolation.
 
-    Every step ships a package with the same name, so anything already imported
-    has to go before the next one is loaded — otherwise step 7's test quietly
-    asserts against step 6's code and passes for the wrong reason.
+    Every chapter ships a package with the same name, so anything already
+    imported has to go before the next one is loaded — otherwise chapter 5's
+    test quietly asserts against chapter 4's code and passes for the wrong
+    reason.
+
+    `step` is the folder name ("step4_resume") or just the number (4).
     """
-    folder = ROOT / "solutions" / step
-    assert folder.is_dir(), f"no solution folder {step}"
+    folder = ROOT / "solutions" / str(step)
+    if not folder.is_dir():
+        matches = sorted((ROOT / "solutions").glob(f"step{step}_*"))
+        assert matches, f"no solution folder for {step}"
+        folder = matches[0]
 
     for name in [m for m in sys.modules if m == "concert" or m.startswith("concert.")]:
         del sys.modules[name]
     sys.path = [p for p in sys.path if "solutions/" not in p]
     sys.path.insert(0, str(folder))
 
-    os.environ.setdefault("MEMORY_DIR", str(ROOT / "memory"))
+    os.environ["MEMORY_DIR"] = str(scratch_memory())
     os.environ["VENUE_URL"] = VENUE_URL
     return importlib.import_module("concert.agent")
 
 
 def tool_names(agent) -> list[str]:
     return [getattr(t, "name", getattr(t, "__name__", str(t))) for t in agent.tools]
+
+
+class FakeToolContext:
+    """Enough of a ToolContext for the guard and the purchase tool.
+
+    They read `state` and `session.id`. Nothing else.
+    """
+
+    def __init__(self, state=None, session_id="s-test"):
+        self.state = dict(state or {})
+        self.session = types.SimpleNamespace(id=session_id)
+
+
+class FakeContext:
+    """Enough of a workflow Context for a function node called directly.
+
+    `resume_inputs` is what answers to interrupts arrive in; `session.events`
+    is what `what_they_asked_for` reads.
+    """
+
+    def __init__(self, state=None, resume_inputs=None, events=None):
+        self.state = dict(state or {})
+        self.resume_inputs = dict(resume_inputs or {})
+        self.session = types.SimpleNamespace(events=list(events or []))
+
+
+def call_node(fn_node, node_input=None, ctx=None):
+    """Run the function behind a `@node` without the graph around it."""
+    func = fn_node._func  # noqa: SLF001 — the plain function, as written
+    import inspect
+    params = inspect.signature(func).parameters
+    kwargs = {}
+    if "node_input" in params:
+        kwargs["node_input"] = node_input
+    if "ctx" in params:
+        kwargs["ctx"] = ctx if ctx is not None else FakeContext()
+    return func(**kwargs)
 
 
 # --- the venue -----------------------------------------------------------
@@ -89,6 +156,13 @@ class Venue:
 
     def sell_out(self, section: str = "A", event_id: str = "ms-ams-01"):
         self.c.post("/admin/sellout", json={"event_id": event_id, "section": section})
+
+    def seatmap(self, event_id: str = "ms-ams-01") -> dict:
+        return self.c.get(f"/events/{event_id}/seatmap").json()
+
+    @property
+    def order_list(self) -> list[dict]:
+        return self.state()["orders"]
 
     def break_next_purchase(self):
         self.c.post("/admin/hang-once")
@@ -203,6 +277,11 @@ def drive(node, turns, *, session_state=None, venue=None, on_interrupt=None):
                         t.calls.append(fc.name)
                     elif getattr(part, "text", None) and part.text.strip():
                         t.said.append(part.text.strip())
+                # A function node's Event(output="...") has no content parts.
+                # It is still something the run said.
+                out = getattr(ev, "output", None)
+                if isinstance(out, str) and out.strip():
+                    t.said.append(out.strip())
 
             if interrupt is not None:
                 answer = on_interrupt(asked, t) if on_interrupt else (

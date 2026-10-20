@@ -47,7 +47,7 @@ function TaskView({ task, slug, color, prepared }: { task: Task; slug: string; c
           {task.explain && (
             <p className="mb-2 text-sm" style={{ color: "var(--fg-muted)" }}><Inline text={task.explain} /></p>
           )}
-          <StageBar step={task.step} color={color} prominent />
+          <StageBar step={task.step} color={color} prominent scope={task.scope ?? "all"} />
         </div>
       )}
       {task.kind === "prompts" && <PromptLab slug={slug} task={task} color={color} />}

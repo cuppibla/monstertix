@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
-# Load a step's finished code into agent/, and reset the state around it.
+# Load a chapter's finished code into place, and reset the state around it.
 #
-#     ./use-solution.sh 5        load step 5, from a clean slate
-#     ./use-solution.sh 5 --keep load the code, leave memory and sessions alone
-#     ./use-solution.sh          list what is available
+#     ./use-solution.sh 4          load Chapter 4, from a clean slate
+#     ./use-solution.sh 4 --keep   load the code, leave memory and sessions alone
+#     ./use-solution.sh 4 --force  reset even if something holds sessions.db open
+#     ./use-solution.sh            list what is available
 #
-# It replaces agent/concert entirely, and unless you pass --keep it also puts
-# memory, sessions and artifacts back to their starting state. That is what
-# makes a step behave the same on the fourth rehearsal as it did on the first.
+# Every chapter ships the same two packages:
+#
+#     concert/      the agent          → agent/concert/
+#     monstertix/   server, page, clock → ./monstertix/
+#
+# Chapter 6 also ships main.py, Dockerfile and requirements.txt, and those go
+# into agent/ together with a copy of monstertix/, because agent/ is the build
+# context `./deploy-agent.sh` uploads.
+#
+# Unless you pass --keep it also puts memory, sessions and artifacts back to
+# their starting state. That is what makes a chapter behave the same on the
+# fourth rehearsal as it did on the first.
 #
 # Your venue is never touched — press RESET THE VENUE on the panel for that.
 set -euo pipefail
@@ -16,16 +26,40 @@ cd "$(dirname "$0")"
 PY=./.venv/bin/python
 [ -x "$PY" ] || PY=python
 
+# The six chapters, by number. Fixed here rather than globbed, so a stray
+# folder in solutions/ can never be loaded by accident.
+stage_dir() {
+  case "$1" in
+    1) echo "solutions/step1_meet" ;;
+    2) echo "solutions/step2_wake" ;;
+    3) echo "solutions/step3_remember" ;;
+    4) echo "solutions/step4_resume" ;;
+    5) echo "solutions/step5_buy" ;;
+    6) echo "solutions/step6_cloud" ;;
+    *) echo "" ;;
+  esac
+}
+
+stage_title() {
+  case "$1" in
+    1) echo "Meet MonsterTix" ;;
+    2) echo "Wake the Agent" ;;
+    3) echo "Remember What Matters" ;;
+    4) echo "Pause, Restart, Resume" ;;
+    5) echo "Buy Within Agreed Limits" ;;
+    6) echo "Run It While You Sleep" ;;
+  esac
+}
+
 if [ $# -eq 0 ]; then
-  echo "Which step?"
-  for d in solutions/step*/; do
-    n=$(basename "$d"); num=${n#step}; num=${num%%_*}
-    printf "%03d\t%s\t%s\n" "$num" "$num" "$(echo "$n" | cut -d_ -f2- | tr '_' ' ')"
-  done | sort | cut -f2,3 | while IFS=$'\t' read -r num name; do
-    printf "  %-3s %s\n" "$num" "$name"
+  echo "Which chapter?"
+  for n in 1 2 3 4 5 6; do
+    d=$(stage_dir "$n")
+    mark=""; [ -d "$d/concert" ] || mark="   (missing: $d/concert)"
+    printf "  %s  %-28s %s%s\n" "$n" "$(stage_title "$n")" "$d" "$mark"
   done
   echo ""
-  echo "  ./use-solution.sh 5"
+  echo "  ./use-solution.sh 4"
   exit 0
 fi
 
@@ -41,42 +75,15 @@ for arg in "$@"; do
   esac
 done
 
-MATCH=$(ls -d solutions/step"$STEP"_*/ 2>/dev/null | head -1 || true)
-if [ -z "$MATCH" ]; then
-  echo "✗ no solution for step $STEP"
+MATCH=$(stage_dir "$STEP")
+if [ -z "$MATCH" ] || [ ! -d "$MATCH" ]; then
+  echo "✗ no solution for chapter $STEP"
   echo "  try:  ./use-solution.sh"
   exit 1
 fi
-
-# Anything in a solution folder that is not agent code belongs at the repo root,
-# and it overwrites what is there. A step whose material is the trigger, or the
-# frontend, or a deploy script is still a step — it just does not live in
-# agent/. Step 3 is the first of those.
-EXTRAS=""
-for item in "$MATCH"*; do
-  name=$(basename "$item")
-  case "$name" in
-    # These belong to agent/, and are copied there separately below. Without
-    # this they land at the repo root and overwrite the VENUE's Dockerfile and
-    # requirements.txt, which only shows up as a failed deploy much later.
-    concert|nightly|server.py|README.md|Dockerfile|main.py|requirements.txt) continue ;;
-  esac
-  rm -rf "./$name"
-  cp -r "$item" "./$name"
-  find "./$name" -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
-  EXTRAS="$EXTRAS $name"
-done
-
-# A step made only of those is done — there is no agent state to reset.
-if [ -n "$EXTRAS" ] && [ ! -d "$MATCH/concert" ]; then
-  echo "→ loaded  $(basename "$MATCH") ·$EXTRAS"
-  echo ""
-  echo "  Start it with:"
-  echo "      python -m monstertix.server        # then open http://127.0.0.1:8090"
-  echo "      python -m monstertix.clock --in 10 # the other half, in a third terminal"
-  echo ""
-  echo "  (port 8090 already taken? TRIGGER_PORT=8091 python -m monstertix.server)"
-  exit 0
+if [ ! -d "$MATCH/concert" ] || [ ! -d "$MATCH/monstertix" ]; then
+  echo "✗ $MATCH is incomplete — it needs both concert/ and monstertix/"
+  exit 1
 fi
 
 # Deleting sessions.db while `adk web` holds it open does not error — it leaves
@@ -93,60 +100,57 @@ if [ -z "$KEEP" ] && [ -z "$FORCE" ] && lsof -ti:8000 >/dev/null 2>&1; then
 fi
 
 # ── the code ───────────────────────────────────────────────────────────────
+# The agent.
 rm -rf agent/concert
-cp -r "$MATCH/concert" agent/
-find agent -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+cp -r "$MATCH/concert" agent/concert
 
-# From step 8 on there is a second package — the nightly workflow, served as
-# its own app so `adk web` and Pub/Sub can both address it by name.
-EXTRA=""
-if [ -d "$MATCH/nightly" ]; then
-  rm -rf agent/nightly
-  cp -r "$MATCH/nightly" agent/
-  EXTRA=" (concert + nightly"
-else
-  rm -rf agent/nightly
-fi
+# The server, the page and the clock, at the root where
+# `python -m monstertix.server` finds them.
+rm -rf monstertix
+cp -r "$MATCH/monstertix" monstertix
 
-# Step 10 also ships the deployable surface: an entrypoint, a container, and a
-# copy of the front end. All of it lives in agent/, because agent/ is the build
-# context `gcloud run deploy --source agent` uploads.
+# The deployable surface. Only Chapter 6 has one; anything an earlier load left
+# in agent/ is removed, so `adk web agent` sees exactly one app.
 rm -f agent/main.py agent/server.py agent/Dockerfile agent/requirements.txt
 rm -rf agent/monstertix
 DEPLOYABLE=""
-for f in main.py Dockerfile requirements.txt; do
-  [ -f "$MATCH/$f" ] && cp "$MATCH/$f" "agent/$f" && DEPLOYABLE="$DEPLOYABLE $f"
-done
-if [ -d "$MATCH/monstertix" ]; then
+if [ -f "$MATCH/main.py" ]; then
+  for f in main.py Dockerfile requirements.txt; do
+    cp "$MATCH/$f" "agent/$f"
+    DEPLOYABLE="$DEPLOYABLE $f"
+  done
   cp -r "$MATCH/monstertix" agent/monstertix
   DEPLOYABLE="$DEPLOYABLE monstertix/"
 fi
-[ -n "$DEPLOYABLE" ] && EXTRA="${EXTRA:+$EXTRA} +$DEPLOYABLE"
+
+find agent monstertix -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
+
 # `adk web` treats EVERY directory under agent/ as an app and errors on any that
 # is not one — which empties the dropdown. A stray ./memory or ./artifacts left
 # by running something from inside agent/ is enough to do it.
 for d in agent/*/; do
   case "$(basename "$d")" in
-    concert|nightly|monstertix) ;;
+    concert|monstertix) ;;
     *) rm -rf "$d"; echo "→ tidied  removed stray agent/$(basename "$d")/" ;;
   esac
 done
 
-[ -n "$EXTRA" ] && EXTRA="$EXTRA"
-echo "→ loaded  $(basename "$MATCH")${EXTRA}"
+LOADED="concert/ + monstertix/"
+[ -n "$DEPLOYABLE" ] && LOADED="$LOADED + agent/{$(echo "$DEPLOYABLE" | sed 's/^ //; s/ /, /g')}"
+echo "→ loaded  Chapter $STEP · $(stage_title "$STEP")  ($LOADED)"
 
 # ── the state around it ────────────────────────────────────────────────────
 if [ -z "$KEEP" ]; then
-  # Memory. A step can have its own starting file; otherwise everyone gets the
-  # same one. See seed/memory/README.md.
+  # Memory. A chapter can have its own starting file; otherwise everyone gets
+  # the same one. See seed/memory/README.md.
   SEED=seed/memory/step"$STEP".md
   [ -f "$SEED" ] || SEED=seed/memory/default.md
   mkdir -p memory
   cp "$SEED" memory/userx.md
   echo "→ memory  $SEED → memory/userx.md"
 
-  # Sessions. Rebuilt rather than emptied, because step 4 opens a conversation
-  # that has to already exist and be two days old.
+  # Sessions. Rebuilt rather than emptied, because Chapter 3 opens a
+  # conversation that has to already exist and be two days old.
   rm -f sessions.db
   if "$PY" -m seed.session >/dev/null 2>&1; then
     echo "→ session sessions.db rebuilt, with 'two-days-ago' back in it"
@@ -172,6 +176,9 @@ if lsof -ti:8000 >/dev/null 2>&1; then
   echo "⚠ adk web is running on :8000. Restart it so you know it is running"
   echo "  the code you just loaded, and check the tool list in the left panel."
 fi
+if lsof -ti:8090 >/dev/null 2>&1; then
+  echo "⚠ MonsterTix is running on :8090. Restart it too — it imports the agent."
+fi
 
 echo ""
 echo "  Now go and read what changed:"
@@ -183,4 +190,9 @@ for f in agent/concert/*.py; do
   esac
 done
 echo ""
-echo "  Then start adk web in terminal 1, and press RESET THE VENUE on the panel."
+case "$STEP" in
+  6) echo "  Then:  ./setup-cloud-state.sh && ./deploy-agent.sh" ;;
+  *) echo "  Then start adk web in terminal 1, and press RESET THE VENUE on the panel."
+     echo "      python -m monstertix.server        # the page, on http://127.0.0.1:8090"
+     echo "      python -m monstertix.clock --in 10 # the caller, in a third terminal" ;;
+esac

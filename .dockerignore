@@ -34,7 +34,7 @@ memory/
 .adk/
 
 # --- secrets -------------------------------------------------------------
-# .env holds the Cloud SQL password after step 10. An image layer is forever
+# .env holds the Cloud SQL password after Chapter 6. An image layer is forever
 # and anyone who can pull the image can read it.
 .env
 .env.*

@@ -7,10 +7,10 @@ each request, so an edit shows on reload; nothing needs rebuilding.
 content/
   course.yaml                  title, credit
   steps/
-    06-resumption/             NN-slug: NN is the order, slug is the URL
+    04-resume/                 NN-slug: NN is the order, slug is the URL
       step.yaml                meta, parts, exercises, checks
-      a-the-wait.md            one part's reading
-      b-pull-the-plug.md
+      a-pause.md               one part's reading
+      b-restart.md
   images/                      served at /content-images/
 ```
 
@@ -20,18 +20,19 @@ uses them without a copy: `:::figure src="/docs-img/06-02-intro.png"`.
 ## step.yaml
 
 ```yaml
-title: Process resumption
-kicker: Step 6
-minutes: 15
+title: Pause, Restart, Resume
+kicker: Chapter 4            # default "Chapter N"; the appendix says "Reference"
+minutes: 25
 color: amber            # cyan, purple, blue, amber, green, red, lime, teal
-venue: true             # optional: the live venue panel in a left column (step 1)
-stage: 6                # the solution step this page's code is
+venue: true             # optional: the live venue panel in a left column (chapter 1)
+stage: 4                # the solution stage this page's code is: chapters and stages are 1:1
+appendix: true          # optional: listed after the chapters as "Reference", not counted as one
 summary: One or two sentences under the title.
 parts:
   - id: a
-    label: The wait                     # the chip in the top bar
-    headline: Waiting 40 minutes…       # the page title for this part
-    body: a-the-wait.md
+    label: Pause                        # the chip in the top bar
+    headline: Turn waiting into a pause # the page title for this part
+    body: a-pause.md
     exercises:                          # placed in the reading with :::exercise id="code"
       code:
         title: …
@@ -42,15 +43,41 @@ parts:
     checksTitle: Watch                  # optional
 ```
 
+### Chapters, sections, reference
+
+The top bar numbers the steps that are not `appendix: true` as chapters 1…N,
+in folder order, and lists an appendix after them as **Reference**. Parts are
+the sections (`4a`, `4b`…). The old nine step slugs still resolve: `story`,
+`asleep`, `trigger`, `context`, `compaction`, `resumption`, `workflow`,
+`human` and `cloud` redirect to the section that teaches the same thing
+(`meet/a`, `wake/a`, `wake/b`, `remember/a`, `remember/c`, `resume/a`,
+`resume/a`, `buy/a`, `cloud/a`), so keep those slugs for the new folders.
+Next/Previous only navigates; a section is never marked done by reading it.
+
 ### Tasks
 
-**prepare** loads a step's code: stops the agent, presses RESET THE VENUE,
-runs `./use-solution.sh N --force`, starts the agent again.
+**prepare** loads a stage's code: stops the agent, presses RESET THE VENUE,
+runs `./use-solution.sh N --force`, starts the agent again. `N` is the
+chapter number.
 
 ```yaml
 - kind: prepare
   id: prepare
-  step: 6
+  step: 4
+```
+
+With `scope: venue` the same card only resets the venue (orders, queue,
+inventory). No code is copied, no process is stopped, sessions.db and the
+memory file stay, so the task under way keeps its session, ticket and
+authorization. The page says so: *Reset the venue (orders, queue, inventory).
+Code, sessions and memory stay.* Use it where an experiment needs a clean
+venue but the same task (chapter 5's retry).
+
+```yaml
+- kind: prepare
+  id: prepare
+  step: 5
+  scope: venue
 ```
 
 **files** is the file explorer. `stage`/`compare` mark files that step `stage`
@@ -81,7 +108,8 @@ that carry the idea, not every changed line.
 | `service: agent` + `action: kill` | start, stop, restart or kill a service: `venue`, `agent`, `monstertix`, `clock` |
 | `look: venue` | a button that brings `venue`, `agent` or `monstertix` forward |
 | `run: ./show-compaction.sh` | runs a command from the repo root and shows its output |
-| `clock: {in: 10, every: 0}` | starts `python -m monstertix.clock` with those arguments |
+| `clock: {in: 10, every: 0}` | starts `python -m monstertix.clock` with those arguments; `trigger: true` adds `--trigger` (posts to `/trigger/wake`, chapter 6's rehearsal) |
+| `resume: task` | the **Resume current task** button: answers the current session's queue wait (see `:::task`) |
 | only `text` | an instruction with no button |
 
 The apps an exercise uses are framed right under its card, in tabs: every
@@ -123,7 +151,7 @@ the command under "how", so it should be one a student could run.
   note: shown when an `expect: fail` row has happened
 ```
 
-`expect: fail` marks a failure the step is built to show (step 2's agent that
+`expect: fail` marks a failure the step is built to show (chapter 2's agent that
 never wakes). Write the probe so it passes when the
 failure is observed; the row turns amber with an "expected" tag rather than
 green.
@@ -131,8 +159,43 @@ green.
 Probes may only run `python3 -m workbench.probe …` or a reading `curl`.
 `python -m workbench.probe --help` lists the questions it answers: `tool`,
 `response`, `state`, `memory`, `artifacts`, `compaction`, `orders`, `queue`,
-`killed`, `wake`, `session`, `pending`, `nodes`, `file`, `url`, `turns`.
+`tickets`, `killed`, `wake`, `session`, `pending`, `nodes`, `file`, `url`,
+`turns`, `prompts`, `setting`, and the task questions `task`,
+`authorization`, `guard`, `retry`, `resumed`.
 `$VENUE_URL`, `$WORKSHOP`, `$PROJECT` and `$REGION` are filled in.
+
+#### This session only
+
+The course is one task, but a student may start it more than once, and an
+old session must never pass a check for a new experiment. Scope a check to
+the **current session** (the newest one, by its latest event; the seeded
+`two-days-ago` conversation never counts):
+
+| Probe | Looks at |
+|---|---|
+| `tool NAME --current`, `response NAME --current`, `state KEY --current`, `nodes A B --current`, `pending --current` | the newest session's events only |
+| `orders --since-session [--count N] [--section C] [--qty N]` | venue orders created after the newest session's first event |
+| `task [--kind queue\|person\|none] [--ready] [--ticket]` | the current task: paused on the queue, on a person (`budget:*`), or not paused; `ready_to_buy`; a `queue_ticket` |
+| `authorization [--confirmed]` | the session's `authorization` state (`{text, seats, per_seat_max, confirmed, confirmed_at}`) |
+| `guard REASON` | the last `purchase` response in the session carries `"reason": "REASON"` (`no_authorization`, `wrong_seat_count`, `over_authorization`, `stale_plan`, `price_moved`) |
+| `retry` | the last `purchase` response has `attempts >= 2`, and the venue has exactly one order since the session started |
+| `resumed` | the session has ≥ 2 invocations, one `queue_ticket`, and the venue logged one `joined` since the session started |
+| `wake --trigger` | the clock's log shows a `POST /trigger/wake` that was answered (chapter 6's local rehearsal) |
+
+Rows that use any of these show a small *this session only* tag in the Watch
+panel, so the student knows an earlier run is not being counted.
+
+```yaml
+- id: once
+  label: It did not join the queue a second time
+  probe: python3 -m workbench.probe resumed
+- id: stale
+  label: The guard refused the old plan
+  probe: python3 -m workbench.probe guard stale_plan
+- id: order
+  label: One order, in section C, for this task
+  probe: python3 -m workbench.probe orders --since-session --count 1 --section C
+```
 
 ## The reading (.md)
 
@@ -169,7 +232,48 @@ one
 ---
 two
 :::
+
+:::task                    the current task card (below)
+:::
+
+:::optional title="Compaction by hand" minutes=10 needs="a session with 20+ turns"
+Collapsed until opened. Markdown and any block in here.
+:::
+
+:::checkpoint
+**Why does a persisted session not resume a paused run by itself?**
+:::answer
+Collapsed behind "Reveal". Write the answer here.
+:::
+:::
 ```
+
+### The task card
+
+`:::task` (with no `id`) is the **current task**, read from the session store
+every three seconds and never remembered by the page: the session (short id,
+how many runs, which store), *Paused on: the queue / you / —*, the queue
+ticket and show, the authorization as `budget.describe` words it, *ready to
+buy*, and the last order. Its **Resume current task** button answers the
+session's queue wait (`queue:wait`) with `{"checked": true}` through
+`adk web`'s `POST /run`, or MonsterTix's `POST /wake` when adk web is off,
+so the run continues in the same session with the same ticket. When the
+task is waiting on a person (`budget:ask`, `budget:confirm`) the button is
+disabled and says so: a person answers in the chat. The same button goes in
+a numbered list as a turn item, `resume: task`.
+
+`:::task id="files"` inside an `:::exercise` is unchanged: it places that
+card's task in the reading.
+
+### Optional and checkpoint
+
+`:::optional` is off the main line: a collapsed card with `title`,
+`minutes` (how long it takes) and `needs` (what it assumes is in place).
+Skipping it costs nothing. `:::checkpoint` is the question that ends a
+section; write the question in bold as its first line, and put the answer
+inside an `:::answer` block, which is collapsed behind **Reveal** so the
+student predicts first. A `title="…"` on `:::checkpoint` replaces the
+"Checkpoint" kicker.
 
 ### Code
 
@@ -187,11 +291,11 @@ English is the source. A translation sits next to it, one file at a time, and
 anything not yet translated falls back to English:
 
 ```
-06-resumption/
+04-resume/
   step.yaml          English
   step.es.yaml       only the strings that differ in Spanish
-  a-the-wait.md
-  a-the-wait.es.md
+  a-pause.md
+  a-pause.es.md
 course.es.yaml
 ```
 

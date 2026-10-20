@@ -6,11 +6,21 @@ import { shown } from "../lib/numbers";
 import { t } from "../i18n";
 
 /* Which step's code is in agent/, and the button that loads the one this
-   page needs. Loading is what the codelab does at the top of every step:
+   page needs. Loading is what the codelab does at the top of every chapter:
    stop the agent, RESET THE VENUE, `./use-solution.sh N --force`, start the
-   agent again. The output is kept, so a student can read what it changed. */
+   agent again. The output is kept, so a student can read what it changed.
 
-export function StageBar({ step, color, prominent = false }: { step: number; color: string; prominent?: boolean }) {
+   With scope="venue" the same bar only resets the venue (orders, queue,
+   inventory): the code, the sessions and the memory file stay, and no
+   process is touched. That is how an experiment starts from a clean venue
+   without losing the task under way. */
+
+export function StageBar({ step, color, prominent = false, scope = "all" }: {
+  step: number;
+  color: string;
+  prominent?: boolean;
+  scope?: "all" | "venue";
+}) {
   const { stage, refresh, bump } = useBench();
   const [busy, setBusy] = useState(false);
   const [output, setOutput] = useState("");
@@ -18,8 +28,9 @@ export function StageBar({ step, color, prominent = false }: { step: number; col
   const [showOutput, setShowOutput] = useState(false);
 
   if (!stage) return null;
+  const venueOnly = scope === "venue";
   const matches = stage.step === step;
-  // Solutions 2 and 3 share an agent, as do 9 and 10; the bar only asks for a load when the code differs.
+  // Two stages can share an agent; the bar only asks for a load when the code differs.
   const loadedText = stage.step === null
     ? t("No step's code is in agent/.")
     : stage.edited
@@ -30,7 +41,7 @@ export function StageBar({ step, color, prominent = false }: { step: number; col
     setBusy(true);
     setFailed(false);
     try {
-      const result = await api.stageLoad(step, true);
+      const result = await api.stageLoad(step, true, scope);
       setOutput(result.output);
       setFailed(!result.ok);
       setShowOutput(!result.ok);
@@ -44,32 +55,41 @@ export function StageBar({ step, color, prominent = false }: { step: number; col
     }
   }
 
+  // A venue-only reset is never a warning: the code in place is not its business.
+  const calm = matches || venueOnly;
   return (
     <div
       className={`mb-3 rounded-xl border ${prominent ? "px-4 py-3.5" : "px-3.5 py-2"}`}
       style={{
-        borderColor: matches ? "var(--hairline)" : "color-mix(in srgb, var(--amber) 55%, transparent)",
-        background: matches ? "var(--overlay)" : "color-mix(in srgb, var(--amber) 9%, transparent)",
+        borderColor: calm ? "var(--hairline)" : "color-mix(in srgb, var(--amber) 55%, transparent)",
+        background: calm ? "var(--overlay)" : "color-mix(in srgb, var(--amber) 9%, transparent)",
       }}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm" style={{ color: "var(--fg-muted)" }}>
         <span>
-          {loadedText}{" "}
-          {matches ? (stage.edited ? "" : t("That is this step's code.")) : t("This step uses step {n}.", { n: shown(step) })}
+          {venueOnly
+            ? t("Reset the venue (orders, queue, inventory). Code, sessions and memory stay.")
+            : <>{loadedText}{" "}{matches ? (stage.edited ? "" : t("That is this step's code.")) : t("This step uses step {n}.", { n: shown(step) })}</>}
         </span>
         <button
           type="button"
           onClick={load}
           disabled={busy}
-          className={`ml-auto btn ${matches && !prominent ? "" : "btn--solid"}`}
-          style={matches && !prominent ? undefined : { background: color, borderColor: color }}
+          className={`ml-auto btn ${matches && !prominent && !venueOnly ? "" : "btn--solid"}`}
+          style={matches && !prominent && !venueOnly ? undefined : { background: color, borderColor: color }}
         >
-          {busy ? t("Loading…") : matches ? t("Reload step {n}", { n: shown(step) }) : t("Load step {n}", { n: shown(step) })}
+          {busy ? (venueOnly ? t("Resetting…") : t("Loading…"))
+            : venueOnly ? t("Reset the venue")
+            : matches ? t("Reload step {n}", { n: shown(step) }) : t("Load step {n}", { n: shown(step) })}
         </button>
       </div>
       {prominent && (
         <p className="mt-1.5 text-[0.74rem]" style={{ color: "var(--fg-faint)" }}>
-          {t("Stops the agent, presses RESET THE VENUE, runs ./use-solution.sh {n} --force, and starts the agent again.", { n: step })}
+          {venueOnly
+            ? (matches
+                ? t("Presses RESET THE VENUE and nothing else. The agent keeps running; the current session keeps its ticket and authorization.")
+                : t("Presses RESET THE VENUE and nothing else. This chapter expects step {n}'s code; load it from an earlier section if agent/ holds something else.", { n: shown(step) }))
+            : t("Stops the agent, presses RESET THE VENUE, runs ./use-solution.sh {n} --force, and starts the agent again.", { n: step })}
         </p>
       )}
       {busy && <div className="working-bar mt-2 h-[3px] w-full rounded-full" aria-hidden />}

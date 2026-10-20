@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Module 6 — give the agent somewhere durable to keep things.
+# Chapter 6 · Run It While You Sleep — give the agent somewhere durable to keep
+# things.
 #
-#     ./setup-cloud-state.sh
+#     ./setup-cloud-state.sh        once; safe to run again
 #
 # Everything the agent remembers has been on your laptop until now:
 #
@@ -21,7 +22,9 @@
 #     2. a user for the agent to connect as
 #     3. a Cloud Storage bucket for memory and artifacts
 #
-# and prints the two URIs that replace the two file paths.
+# and prints the two URIs that replace the two file paths. Nothing is migrated:
+# a task that is parked in your laptop's sessions.db stays there. Chapter 6
+# starts a NEW task in the cloud and lets the scheduler finish that one.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -46,7 +49,7 @@ echo ""
 
 # --- 1. Is the instance ready? -------------------------------------------
 #
-# setup.sh started this at the beginning of the workshop precisely so nobody
+# setup.sh started this during the pre-work precisely so nobody
 # has to wait for it here. If it is still building, say so plainly rather than
 # failing with a Cloud SQL error nobody can read.
 STATE=$(gcloud sql instances describe "$SQL_INSTANCE" --project "$PROJECT" \
@@ -160,4 +163,5 @@ echo "              password: $DB_PASS"
 echo "   memory     $BUCKET/memory/"
 echo "   artifacts  $ARTIFACT_URI"
 echo ""
-echo "   ./deploy-agent.sh picks these up. Nothing in agent/ changes."
+echo "   ./deploy-agent.sh picks these up. Nothing in agent/concert changes."
+echo "   Not migrated: whatever is in your local sessions.db stays local."
