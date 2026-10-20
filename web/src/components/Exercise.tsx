@@ -17,10 +17,20 @@ import { Turn } from "./Turn";
    UI opens in a drawer from the top right; an action's button brings the
    right one forward. */
 
-/* One task, rendered where the card puts it. */
-function TaskView({ task, slug, color, prepared }: { task: Task; slug: string; color: string; prepared: boolean }) {
+/* One task, rendered where the card puts it. `compact` is the drawer's steps
+   column: everything the student does, with the code viewer left to the reading. */
+export function TaskView({ task, slug, color, prepared, compact = false }: {
+  task: Task; slug: string; color: string; prepared: boolean; compact?: boolean;
+}) {
+  if (compact && task.kind === "files") {
+    return (
+      <p className="mt-3 text-[0.78rem]" style={{ color: "var(--fg-faint)" }}>
+        {t("The code viewer for this card is in the reading, behind the drawer.")}
+      </p>
+    );
+  }
   return (
-    <div className="mt-5">
+    <div className={compact ? "mt-3" : "mt-5"}>
       {task.title && <h3 className="text-[0.98rem] font-semibold">{task.title}</h3>}
       {task.kind === "prepare" && task.step !== undefined && (
         <div className="mt-2">

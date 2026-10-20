@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { isUp, useBench } from "../lib/bench";
 import { APPS, AppFrame, frameHref } from "./AppFrame";
 import { ServiceControls, ServiceLog } from "./ServiceControls";
+import type { Exercise } from "../lib/api";
+import { TaskView } from "./Exercise";
 import { Inline } from "./Inline";
-import { Turn } from "./Turn";
 import { t } from "../i18n";
 
 /* The ADK web UI, in a drawer from the right. It is the development window
@@ -26,34 +27,34 @@ function stored(key: string, fallback: boolean): boolean {
   }
 }
 
-/* The section's numbered steps, card by card. */
+/* The section's "Your turn" cards, in order, every task but the code viewer. */
 function Steps() {
   const { current } = useBench();
-  const cards = (current?.exercises ?? [])
-    .map(({ id, exercise }) => ({ id, exercise, turns: exercise.tasks.filter((task) => task.kind === "turn") }))
-    .filter((card) => card.turns.length > 0);
+  const cards = (current?.exercises ?? []).filter(({ exercise }) => exercise.tasks.length > 0);
   if (!current || cards.length === 0) {
     return (
       <p className="px-4 py-6 text-[0.8rem]" style={{ color: "var(--fg-faint)" }}>
-        {t("This section has no numbered steps. The reading is behind the drawer.")}
+        {t("This section has nothing to do yet. The reading is behind the drawer.")}
       </p>
     );
   }
+  const prepared = (exercise: Exercise) => exercise.tasks.some((task) => task.kind === "prepare");
   return (
     <div className="px-4 py-3">
-      {cards.map(({ id, exercise, turns }) => (
-        <section key={id} className="mb-6">
-          <div className="kicker" style={{ color: "var(--accent)" }}>{t("Your turn")}</div>
+      {cards.map(({ id, exercise }, index) => (
+        <section key={id} className="mb-7 border-b pb-6 last:border-b-0" style={{ borderColor: "var(--hairline)" }}>
+          <div className="kicker" style={{ color: "var(--accent)" }}>
+            {t("Your turn")}{cards.length > 1 ? ` · ${index + 1} / ${cards.length}` : ""}
+          </div>
           {exercise.title && <h3 className="mt-1 text-[0.95rem] font-semibold leading-snug">{exercise.title}</h3>}
           {exercise.intro && (
             <p className="mt-1 text-[0.8rem]" style={{ color: "var(--fg-muted)" }}><Inline text={exercise.intro.trim()} /></p>
           )}
-          {turns.map((task) => (
-            <div key={task.id} className="mt-2 text-[0.86rem]">
-              {task.title && <h4 className="text-[0.88rem] font-semibold">{task.title}</h4>}
-              <Turn items={task.items ?? []} slug={current.slug} task={task.id} />
-            </div>
-          ))}
+          <div className="text-[0.86rem]">
+            {exercise.tasks.map((task) => (
+              <TaskView key={task.id} task={task} slug={current.slug} color="var(--accent)" prepared={prepared(exercise)} compact />
+            ))}
+          </div>
         </section>
       ))}
     </div>
@@ -124,7 +125,7 @@ export function AgentDrawer() {
       )}
       <div className="flex min-h-0 flex-1">
         {steps && (
-          <div className="drawer__steps quiet-scroll w-[22rem] shrink-0 overflow-y-auto border-r"
+          <div className="drawer__steps quiet-scroll w-[26rem] shrink-0 overflow-y-auto border-r"
                style={{ borderColor: "var(--hairline)", background: "var(--stage)" }}>
             <Steps />
           </div>

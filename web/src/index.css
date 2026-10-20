@@ -421,7 +421,7 @@ img { max-width: 100%; }
 }
 .drawer[data-open="true"] { transform: none; }
 /* With the section's steps riding along, the drawer needs their column too. */
-.drawer[data-steps="true"] { width: min(80vw, 86rem); }
+.drawer[data-steps="true"] { width: min(82vw, 92rem); }
 
 /* Narrow screens: the services become a strip above the step. */
 @media (max-width: 900px) {
