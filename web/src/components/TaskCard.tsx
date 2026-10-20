@@ -38,7 +38,7 @@ function shortId(id: string | null): string {
 }
 
 function whyNot(task: TaskSummary | null): string {
-  if (!task || !task.session_id) return t("No task yet.");
+  if (!task || !task.session_id) return t("No task yet: start one in the section before this one.");
   if (!task.pending) return t("Nothing is paused.");
   if (task.pending.kind === "person") return t("Waiting for you: answer in the chat.");
   if (task.pending.kind !== "queue") return t("Paused on something that is not a queue wait.");

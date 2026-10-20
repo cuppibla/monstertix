@@ -95,6 +95,10 @@ parts:
     exercises:
       run:
         title: Change the world while it waits
+        needs: >
+          The task you started in 5a, still parked in the queue with its authorization
+          confirmed. If the task card says *no task yet* or the venue shows nobody in line,
+          go back to **5a** and run it; loading a chapter wipes the previous task.
         intro: >
           Same session, same task, same ticket. Nothing is reloaded here.
         apps: [agent, venue]
@@ -160,6 +164,7 @@ parts:
     exercises:
       run:
         title: A separate experiment, with its own start
+        needs: Chapter 5 loaded (the bar in 5a). Not the task from 5b; this one starts its own.
         intro: >
           This one begins from a clean venue and a new session, but the
           chapter 5 code stays loaded. Reset the venue only, start a **new

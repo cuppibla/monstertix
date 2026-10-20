@@ -202,7 +202,7 @@ function Item({ item, slug, task, index }: { item: TurnItem; slug: string; task:
         <button type="button" className="btn" onClick={() => focus("venue")}>{t("See the panel")}</button>
         {item.needs === "queue" && !inLine && (
           <span className="text-[0.74rem]" style={{ color: "var(--amber)" }}>
-            {t("Waiting for the agent to join the queue. Nobody is in line yet.")}
+            {t("Nobody is in line yet. Start the task first; the section before this one does that.")}
           </span>
         )}
       </div>

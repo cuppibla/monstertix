@@ -82,6 +82,13 @@ export function Exercise({ slug, exercise, color, children, placed = [] }: {
              style={{ borderColor: `color-mix(in srgb, ${color} 40%, var(--hairline))`, background: "var(--card)" }}>
       <div className="kicker" style={{ color }}>{t("Your turn")}</div>
       {exercise.title && <h2 className="display mt-2 text-[1.35rem] leading-tight">{exercise.title}</h2>}
+      {exercise.needs && (
+        <p className="mt-2 rounded-lg border px-3 py-1.5 text-[0.84rem]"
+           style={{ borderColor: "color-mix(in srgb, var(--amber) 45%, transparent)", color: "var(--fg)" }}>
+          <span className="kicker mr-2" style={{ color: "var(--amber)" }}>{t("Needs")}</span>
+          <Inline text={exercise.needs.trim()} />
+        </p>
+      )}
       {exercise.intro && (
         <p className="mt-2 whitespace-pre-line text-[0.95rem]" style={{ color: "var(--fg-muted)" }}>
           <Inline text={exercise.intro.trim()} />

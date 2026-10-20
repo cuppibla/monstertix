@@ -47,6 +47,11 @@ function Steps() {
             {t("Your turn")}{cards.length > 1 ? ` · ${index + 1} / ${cards.length}` : ""}
           </div>
           {exercise.title && <h3 className="mt-1 text-[0.95rem] font-semibold leading-snug">{exercise.title}</h3>}
+          {exercise.needs && (
+            <p className="mt-1 text-[0.78rem]" style={{ color: "var(--amber)" }}>
+              {t("Needs")}: <Inline text={exercise.needs.trim()} />
+            </p>
+          )}
           {exercise.intro && (
             <p className="mt-1 text-[0.8rem]" style={{ color: "var(--fg-muted)" }}><Inline text={exercise.intro.trim()} /></p>
           )}

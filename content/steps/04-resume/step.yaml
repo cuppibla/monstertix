@@ -100,6 +100,9 @@ parts:
   exercises:
     run:
       title: Kill the process, then continue the same task
+      needs: >-
+        The task you started in 4a, parked in the queue. If the task card says *no task yet*,
+        go back to 4a and send the message.
       intro: >-
         The point of this section: the process dies, the task does not. Same session, same
         ticket. Before you press anything, guess which of these die with the process: the
@@ -171,6 +174,7 @@ parts:
   exercises:
     read:
       title: Find the resume in the events
+      needs: The session from 4b, after its two Resumes.
       intro: >-
         No new actions. Read the session you just finished: on each Resume, which nodes ran
         again, and which did not.

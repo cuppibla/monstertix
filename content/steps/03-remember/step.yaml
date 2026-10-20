@@ -115,6 +115,7 @@ parts:
   exercises:
     run:
       title: Read the file, watch it enter the run, then write to it
+      needs: Chapter 3 loaded (the bar in 3a).
       intro: >-
         Same chapter, same code. Open `memory/userx.md` in the explorer first, so you know what the
         agent is about to read.
@@ -185,6 +186,7 @@ parts:
   exercises:
     run:
       title: Compare the two sessions, then look at one artifact
+      needs: The sessions from 3a and 3b; in particular the one where you asked for the seat map.
       intro: >-
         No new code and no new conversation. You are reading what the last two sections left
         behind, in three different stores.

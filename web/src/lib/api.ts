@@ -106,7 +106,9 @@ export type Task = {
   say?: string;
 };
 
-export type Exercise = { title?: string; intro?: string; tasks: Task[]; apps?: PaneTab[] };
+export type Exercise = { title?: string; intro?: string; tasks: Task[]; apps?: PaneTab[];
+  /** What must already be true before this card's buttons do anything. */
+  needs?: string };
 
 export type PartFull = {
   id: string;
