@@ -91,6 +91,8 @@
   "The clock is set. Hands off the keyboard.": "The clock is set. Hands off the keyboard.",
   "The code viewer for this card is in the reading, behind the drawer.": "The code viewer for this card is in the reading, behind the drawer.",
   "The point": "The point",
+  "The run stopped itself at check_front and wrote that to the session store. No process is holding the place in line; the venue is. Resume answers the wait and lets it check again.": "The run stopped itself at check_front and wrote that to the session store. No process is holding the place in line; the venue is. Resume answers the wait and lets it check again.",
+  "The run stopped itself to ask you something. Answer in the chat; Resume cannot answer for you.": "The run stopped itself to ask you something. Answer in the chat; Resume cannot answer for you.",
   "The venue said no: {error}": "The venue said no: {error}",
   "The workbench did not answer.": "The workbench did not answer.",
   "Theme": "Theme",

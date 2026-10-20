@@ -123,6 +123,16 @@ export function TaskCard() {
           <p className="mt-1 text-[0.95rem] font-medium" style={{ color: "var(--fg)" }}>
             {task?.kind_label ?? t("loading…")}
           </p>
+          {paused === "queue" && (
+            <p className="mt-1 max-w-xl text-[0.8rem]" style={{ color: "var(--fg-muted)" }}>
+              {t("The run stopped itself at check_front and wrote that to the session store. No process is holding the place in line; the venue is. Resume answers the wait and lets it check again.")}
+            </p>
+          )}
+          {paused === "you" && (
+            <p className="mt-1 max-w-xl text-[0.8rem]" style={{ color: "var(--fg-muted)" }}>
+              {t("The run stopped itself to ask you something. Answer in the chat; Resume cannot answer for you.")}
+            </p>
+          )}
         </div>
         <ResumeButton task={task} onDone={() => reload()} />
       </div>

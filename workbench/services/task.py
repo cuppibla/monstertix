@@ -188,9 +188,9 @@ def summary(session: dict[str, Any]) -> dict[str, Any]:
     paused = {"queue": "queue", "person": "you"}.get(pending["kind"], "other") if pending else None
     last_order = state.get("last_order")
     if pending and pending["kind"] == "queue":
-        label = "waiting in the queue"
+        label = "paused in the queue · nothing is running"
     elif pending and pending["kind"] == "person":
-        label = "waiting for you"
+        label = "paused for your answer · nothing is running"
     elif pending:
         label = "waiting"
     elif isinstance(last_order, dict) and (last_order.get("order_id") or last_order.get("id")):

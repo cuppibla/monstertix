@@ -17,7 +17,8 @@ parts:
       title: Start the task and watch it stop on purpose
       intro: >-
         Load chapter 4. The dropdown still says `concert`, but what answers is now a graph:
-        `open_the_night → pick_show → queue_up → check_front → ready_to_buy`.
+        `open_the_night → pick_show → queue_up → check_front → ready_to_buy`. You will not pause
+        anything by hand. One message starts the graph, and the graph stops itself.
       apps: [agent, venue]
       tasks:
       - kind: prepare
@@ -53,13 +54,18 @@ parts:
             Look at the venue panel: one ticket, position dropping, and a banner telling you the
             agent can be killed. Nothing of yours is running right now.
           look: venue
+        - text: >-
+            That was the pause, and you did not press anything. `check_front` found you were not
+            at the front, returned `RequestInput`, and the run stopped; the task card on this page
+            reads *paused in the queue*. Leave **Resume current task** alone for now: 4b kills
+            the process first, and 4c is where you resume.
   expect:
   - "The graph lights up `START`, `open_the_night`, `pick_show`, `queue_up` and `check_front`. `ready_to_buy` stays grey."
   - "The agent log: `[open]        Nobody is awake. Choosing the show.`, `[queue_up]    ms-ams-01 section A — ticket q_… at #14,203`, then `[check_front] #14,… — not yet. Pausing.`"
   - "**State**: `queue_ticket: q_…`, `queue_event_id: ms-ams-01`, `plan: {event_id: ms-ams-01, section: A, seats: 2, …}`, `request: Get me and Sam two tickets…`"
   - "The last event is a function call `adk_request_input` with the message *Still in the queue at #14,… . Wake me again and I will check.* Then nothing: the run has ended."
   - "Venue banner: **Agent is waiting in line, #14,…** / *…s left at 1×. Safe to kill the agent. It will still be here. SKIP THE WAIT sends it to the front.*"
-  - "The task card on this page: *waiting in the queue* · paused on **the queue** · `queue:wait` · ticket `q_… · ms-ams-01`."
+  - "The task card on this page: *paused in the queue · nothing is running* · paused on **the queue** · `queue:wait` · ticket `q_… · ms-ams-01`."
   checks:
   - id: nodes
     label: "`pick_show`, `queue_up` and `check_front` ran in this session"
@@ -93,48 +99,32 @@ parts:
   body: b-restart.md
   exercises:
     run:
-      title: Predict, kill, restart, resume
+      title: Kill the process, then continue the same task
       intro: >-
-        Same session, same ticket. Before you press anything, write down what you expect to lose
-        when the agent process dies.
+        The point of this section: the process dies, the task does not. Same session, same
+        ticket. Before you press anything, guess which of these die with the process: the
+        ticket, the plan, the place in the queue, the paused run, the conversation. The answer
+        is at the end of the page.
       apps: [agent, venue]
       tasks:
       - kind: turn
         id: turn
         items:
-        - text: >-
-            **Predict.** The agent process is about to die. Which of these go with it: the ticket,
-            the plan, the place in the queue, the paused run, the conversation? Decide now; the
-            answer is at the end of the page.
-        - text: Kill the agent. **kill -9**, at the top of the ADK web UI drawer.
+        - text: "Kill the agent process. **kill -9** is at the top of the ADK web UI drawer; this button does the same."
           service: agent
           action: kill
-        - text: >-
-            The venue did not notice. The position is still dropping, the ticket is still listed,
-            and the banner has not changed. The queue is the venue's; the agent only holds a ticket
-            to it.
+        - text: "Look at the venue panel: the number is still dropping. The venue did not notice; the queue is the venue's, and the agent only holds a ticket to it."
           look: venue
         - text: Start the agent again.
           service: agent
           action: start
-        - text: >-
-            Press **Resume current task** below (or on the task card). It answers the paused
-            `queue:wait` in the same session. Do **not** type in the chat box.
+        - text: "Press **Resume current task**. The paused run picks up where it stopped: still in the queue, with a lower number. It does not start over. Do not type in the chat box."
           resume: task
-        - text: >-
-            In the ADK web UI the same session reopens. One new line in the log,
-            `[check_front] #… — not yet. Pausing.`, with a lower number, and a new
-            `adk_request_input` event. No `[open]`, no `[pick_show]`, no `[queue_up]`.
-          look: agent
-        - text: Press **SKIP THE WAIT** on the venue panel. The ticket moves to the front.
+        - text: "Press **SKIP THE WAIT** on the venue panel. The ticket moves to the front of the queue."
           press: SKIP THE WAIT
           venue: advance-queue
-        - text: Resume once more. This time `check_front` falls through.
+        - text: "Resume once more. This time the run gets past `check_front`: the task is **ready to buy**, and nothing is bought."
           resume: task
-        - text: >-
-            `ready_to_buy` lights up, the reply says *Ready to buy. Nothing is bought in this
-            chapter.*, and the venue still shows exactly one ticket, now **AT THE FRONT**.
-          look: venue
   expect:
   - "After kill -9: the venue panel keeps counting down the same `q_…` ticket. The ADK web UI drawer says *killed* until you start it again."
   - "After the first Resume: the log gains one line, `[check_front] #… — not yet. Pausing.`, with a lower position than before. No second show, no second ticket."
@@ -160,7 +150,7 @@ parts:
     probe: python3 -m workbench.probe task --ready
     hint: >-
       Press SKIP THE WAIT on the venue panel, then Resume current task once more. If the card still
-      says *waiting in the queue*, the venue clock may be slow: check the panel says AT THE FRONT
+      says *paused in the queue*, the venue clock may be slow: check the panel says AT THE FRONT
       before resuming.
   - id: oneticket
     label: Still exactly one queue ticket at the venue
