@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 
 import { api, type Job, type PaneTab, type TurnItem } from "../lib/api";
 import { useBench } from "../lib/bench";
-import { useDock } from "./AppDock";
 import { ServiceControls, ServiceLog } from "./ServiceControls";
 import { ResumeButton, useTask } from "./TaskCard";
 import { t } from "../i18n";
@@ -10,10 +9,11 @@ import { Inline } from "./Inline";
 
 /* "Your turn": the numbered things a student does in a step.
 
-   Every item says where it happens. A message is typed into an app on the
-   right (the copy button switches to it); a venue button is the same POST the
-   panel makes; a service action is the same as the switch on the left; a
-   command runs on this machine and shows its output here. */
+   Every item says where it happens. A message is typed into the ADK web UI
+   (the drawer) or the MonsterTix page (the left column); the copy button
+   brings that app forward. A venue button is the same POST the panel makes;
+   a service action is the same as the app's own switch; a command runs on
+   this machine and shows its output here. */
 
 const PANE_NAME: Record<PaneTab, string> = {
   monstertix: "MonsterTix",
@@ -56,7 +56,7 @@ function ResumeItem() {
 }
 
 function CopyLine({ text, tab, label }: { text: string; tab?: PaneTab; label: string }) {
-  const dock = useDock();
+  const { focus } = useBench();
   const [copied, setCopied] = useState(false);
   async function copy() {
     try {
@@ -64,7 +64,7 @@ function CopyLine({ text, tab, label }: { text: string; tab?: PaneTab; label: st
     } catch {
       /* clipboard blocked: the text is on screen to select by hand */
     }
-    if (tab) dock?.focus(tab);
+    if (tab) focus(tab);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   }
@@ -156,10 +156,7 @@ function useInLine(watch: boolean): boolean {
 }
 
 function Item({ item, slug, task, index }: { item: TurnItem; slug: string; task: string; index: number }) {
-  const { refresh, service, venueOnLeft, setRailOpen } = useBench();
-  const dock = useDock();
-  // The venue panel is on the left of this page: bring it out there.
-  const focus = (tab: PaneTab) => (tab === "venue" && venueOnLeft ? setRailOpen(true) : dock?.focus(tab));
+  const { refresh, service, focus } = useBench();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const kind = kindOf(item);

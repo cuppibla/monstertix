@@ -378,7 +378,7 @@ img { max-width: 100%; }
   color: var(--code-fg);
 }
 
-/* ── the page: the step, with the venue panel on the left where a step uses it ── */
+/* ── the page: the world on the left, the step in the middle, the ADK web UI in a drawer ── */
 
 .bench {
   position: relative;
@@ -388,10 +388,9 @@ img { max-width: 100%; }
   min-height: calc(100vh - var(--nav-height, 7rem));
 }
 
-.bench[data-rail="none"] { grid-template-columns: minmax(0, 1fr); }
 .bench[data-rail="closed"] { grid-template-columns: 2.75rem minmax(0, 1fr); }
-/* Holding the venue panel, the column needs the panel's width. */
-.bench[data-rail="wide"] { grid-template-columns: minmax(22rem, 30vw) minmax(0, 1fr); }
+/* Holding the venue panel and the MonsterTix page, the column needs their width. */
+.bench[data-rail="wide"] { grid-template-columns: minmax(24rem, 32vw) minmax(0, 1fr); }
 
 .bench__rail {
   position: sticky;
@@ -403,14 +402,24 @@ img { max-width: 100%; }
 
 .bench__main { min-width: 0; padding-inline: 1.5rem; }
 
-/* An app framed in the reading. Drag the bottom-right corner to make it taller. */
-.app-dock__body {
-  height: 640px;
-  min-height: 320px;
-  max-height: 90vh;
-  resize: vertical;
-  overflow: hidden;
+/* The ADK web UI, over the reading from the right. Kept mounted while closed
+   so the conversation stays where it was. */
+.drawer {
+  position: fixed;
+  z-index: 30;
+  top: var(--nav-height, 7rem);
+  right: 0;
+  bottom: 0;
+  width: min(62vw, 64rem);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--hairline-strong);
+  background: var(--card);
+  box-shadow: -24px 0 48px rgba(0, 0, 0, 0.28);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
 }
+.drawer[data-open="true"] { transform: none; }
 
 /* Narrow screens: the services become a strip above the step. */
 @media (max-width: 900px) {
@@ -423,7 +432,7 @@ img { max-width: 100%; }
   }
   .bench[data-rail="wide"] .bench__rail { height: 70vh; }
   .bench__main { padding-inline: 1rem; }
-  .app-dock__body { height: 520px; }
+  .drawer { width: 100vw; }
 }
 
 .dot {

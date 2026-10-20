@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 import { api, type CoursePayload, type StepCard } from "../lib/api";
+import { isUp, useBench } from "../lib/bench";
 import { LANGUAGE_NAMES, t } from "../i18n";
 
 function ThemeToggle() {
@@ -21,6 +22,24 @@ function ThemeToggle() {
             title={t("Theme")} className="grid h-7 w-7 place-items-center rounded-md border text-xs"
             style={{ borderColor: "var(--hairline)", color: "var(--fg-faint)" }}>
       {theme === "dark" ? "◐" : "○"}
+    </button>
+  );
+}
+
+/* The ADK web UI lives in a drawer: this is its handle. The dot is the agent
+   process; the label stays put so the button is in the same place on every page. */
+function AgentButton() {
+  const { service, drawerOpen, setDrawerOpen } = useBench();
+  const up = isUp(service("agent"));
+  return (
+    <button type="button" onClick={() => setDrawerOpen(!drawerOpen)} aria-pressed={drawerOpen}
+            className="flex items-center gap-2 rounded-md border px-2.5 py-1 text-[0.78rem] font-medium"
+            style={{ borderColor: drawerOpen ? "var(--accent)" : "var(--hairline-strong)",
+                     background: drawerOpen ? "color-mix(in srgb, var(--accent) 14%, transparent)" : "var(--card)",
+                     color: drawerOpen ? "var(--accent)" : "var(--fg)" }}>
+      <span className="dot" style={{ width: 7, height: 7, background: up ? "var(--ok)" : "var(--fg-faint)" }} />
+      {t("ADK web UI")}
+      <span aria-hidden style={{ color: "var(--fg-faint)" }}>{drawerOpen ? "×" : "⇥"}</span>
     </button>
   );
 }
@@ -89,6 +108,7 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
         </NavLink>
         <div className="ml-auto flex items-center gap-2">
           <EnvPill />
+          <AgentButton />
           {languages.length > 1 && (
             <select value={lang} onChange={(e) => onLang(e.target.value)} aria-label={t("Language")}
                     className="rounded-md border px-1.5 py-1 text-[0.72rem]"

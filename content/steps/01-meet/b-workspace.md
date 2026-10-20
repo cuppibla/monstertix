@@ -1,23 +1,32 @@
-Everything in this course happens in two columns and one panel. The venue on
-the left is the world. The **App** area under each "Your turn" card is where
-the agent runs. The reading you are in now is the learning area. Before the
-agent does anything, make sure you know which of them you are looking at, and
-which button changes what.
+Everything in this course happens in three places, and they are in the same
+place on every page. The column on the **left** is the world: the ticket
+seller and, from Chapter 2, your own MonsterTix page. The reading you are in
+now is the learning area. The **ADK web UI** button at the top right opens the
+development window, in a drawer over the reading. Before the agent does
+anything, make sure you know which of them you are looking at, and which
+button changes what.
 
-## The App area
+## The world, on the left
 
-Each "Your turn" card frames the apps that section uses, in tabs:
+Two tabs, and both are the real thing, not a picture of it:
 
 | Tab | What it is | Port |
 |---|---|---|
-| **agent** | the ADK web UI: chat, **Events**, **State**, the agent graph. The development window into a run. You would never ship it. | :8000 |
-| **venue** | the same panel as on the left, framed when a section needs it | :8080 |
-| **monstertix** | your own server and page, the surface a person would actually use. Off until Chapter 2. | :8090 |
+| **Venue panel** | the ticket seller: shows, seats, the queue, orders, and a feed of what the agent is doing to it. Always on | :8080 |
+| **MonsterTix** | your own server and page, the surface a person would actually use. Off until Chapter 2; its switch and log are on the tab | :8090 |
 
-At the top right of each card: the process **switch**, a **log** button, and
-for the agent **Restart** and **kill**. The word next to the switch is the
-process state: *running*, *stopped*, *killed*. The venue starts with the
-workbench and is always on.
+‹ folds the column away; › brings it back. A "Your turn" button that says
+*Show Venue panel* or *Copy · go to MonsterTix* switches to that tab for you.
+
+## The ADK web UI, in a drawer
+
+Chat, **Events**, **State**, the agent graph: the development window into a
+run. You would never ship it, and it is not part of the world, so it is not on
+the left. **ADK web UI** at the top right opens it over the reading; Esc or ×
+closes it, and the conversation is still there when you open it again. At the
+top of the drawer: the process **switch**, **log**, **Restart** and
+**kill -9**. The word next to the switch is the process state: *running*,
+*stopped*, *killed*; the dot on the button shows the same thing on every page.
 
 ## Four buttons that are not the same thing
 
@@ -27,7 +36,7 @@ and mixing them up destroys an experiment.
 | Button | What it does | What survives |
 |---|---|---|
 | **Load step N** (the bar in a "Your turn" card) | stops the agent, presses RESET THE VENUE, copies chapter N's code into `agent/` and `monstertix/`, starts the agent | sessions.db, the memory file, artifacts |
-| **Restart** (agent card) | stops and starts the `adk web` process. Nothing on disk changes | everything: sessions, state, tickets, the venue |
+| **Restart** (ADK web UI drawer) | stops and starts the `adk web` process. Nothing on disk changes | everything: sessions, state, tickets, the venue |
 | **Resume current task** (Chapter 4 on) | answers a paused run's queue wait, in the same session, with the same ticket. Starts nothing new | the task continues where it stopped |
 | **RESET THE VENUE** (venue panel) | the venue forgets orders, tickets and inventory changes. 8 shows, all seats, clock at 1× | the agent side: sessions, state, memory |
 
@@ -86,7 +95,7 @@ narrates its tool calls to the venue's activity feed. You read the rest of it
 in Chapter 2, when you need it.
 
 :::checkpoint
-**You press Restart on the agent card, then RESET THE VENUE. Which of these
+**You press Restart in the ADK web UI drawer, then RESET THE VENUE. Which of these
 are gone: the chat you had in the ADK web UI, a queue ticket the agent held,
 an order on the panel, the memory file?**
 :::answer

@@ -41,7 +41,7 @@ parts:
           look: agent
         - text: >-
             One message starts the graph. Watch the left panel colour the nodes in as they run, and
-            watch the agent log at the top right of the card.
+            watch the agent log (**log**, at the top of the drawer).
           say: Get me and Sam two tickets to the Amsterdam show.
           in: agent
         - text: >-
@@ -106,7 +106,7 @@ parts:
             **Predict.** The agent process is about to die. Which of these go with it: the ticket,
             the plan, the place in the queue, the paused run, the conversation? Decide now; the
             answer is at the end of the page.
-        - text: Kill the agent. **kill -9**, at the top right of the ADK web UI card.
+        - text: Kill the agent. **kill -9**, at the top of the ADK web UI drawer.
           service: agent
           action: kill
         - text: >-
@@ -136,7 +136,7 @@ parts:
             chapter.*, and the venue still shows exactly one ticket, now **AT THE FRONT**.
           look: venue
   expect:
-  - "After kill -9: the venue panel keeps counting down the same `q_…` ticket. The ADK web UI card says *killed* until you start it again."
+  - "After kill -9: the venue panel keeps counting down the same `q_…` ticket. The ADK web UI drawer says *killed* until you start it again."
   - "After the first Resume: the log gains one line, `[check_front] #… — not yet. Pausing.`, with a lower position than before. No second show, no second ticket."
   - "After SKIP THE WAIT and the second Resume: `[check_front] at the front`, then `[ready]       at the front for ms-ams-01. Ready to buy.` The graph is fully green."
   - "The reply in the chat: *At the front of the queue for ms-ams-01 in Amsterdam: 2 seats in section A. Ready to buy. Nothing is bought in this chapter.*"
@@ -146,7 +146,7 @@ parts:
     label: The agent was killed with -9, then started again
     probe: python3 -m workbench.probe killed agent --restarted
     hint: >-
-      Use **kill -9** at the top right of the ADK web UI card, then its switch to start it again.
+      Use **kill -9** at the top of the ADK web UI drawer, then its switch to start it again.
       Stopping it with the switch is a clean shutdown and does not count.
   - id: resumed
     label: It was woken again and kept the same place in line

@@ -90,7 +90,7 @@ parts:
                   of The Midnight Signal for two seats. Keep doing this until I tell you to stop.
     expect:
       - "One run in the Events list: `⚡ recall`, `⚡ search_events({\"city\": \"Amsterdam\"})`, each with a `✓` result, then a sentence naming Saturday 14 Nov at Ziggo Dome."
-      - "After the swap, the agent card goes *starting* then *running*; the agent agrees to the plan in a new session, and sounds like it means it."
+      - "After the swap, the agent (in the ADK web UI drawer) goes *starting* then *running*; the agent agrees to the plan in a new session, and sounds like it means it."
       - "A minute later: no new run in the Events list, the activity feed is still, and the lab's **Runs** count has not moved."
     checks:
       - id: searched
@@ -98,7 +98,7 @@ parts:
         probe: python3 -m workbench.probe response search_events --contains ms-ams-01
         hint: >
           Ask about the Amsterdam shows in a **new session** of the ADK web UI.
-          If the agent card is not *running*, load Chapter 2 again and open its
+          If the agent is not *running* (the dot on the **ADK web UI** button), load Chapter 2 again and open its
           log.
       - id: swapped
         label: You swapped a proactive wording in, and the agent restarted on it
@@ -142,9 +142,10 @@ parts:
             id: turn
             items:
               - text: >
-                  Start MonsterTix. Open its **log** at the top right of its
-                  card and read the last line: *nothing will happen until
-                  something calls it.*
+                  Start MonsterTix. It appears on the left, on the
+                  **MonsterTix** tab of the world column. Press **log** there
+                  and read the last line: *nothing will happen until something
+                  calls it.*
                 service: monstertix
                 action: start
               - text: >
@@ -178,7 +179,7 @@ parts:
         label: MonsterTix is running, with the concert agent loaded
         probe: python3 -m workbench.probe url http://127.0.0.1:8090/health
         contains: concert
-        hint: Press **Start MonsterTix**. If its card says *stopped*, open its log; the last line says why.
+        hint: Press **Start MonsterTix**. If the MonsterTix tab on the left says *stopped*, open its log; the last line says why.
       - id: woken
         label: Something called `/wake`, and the Runner ran the agent
         probe: python3 -m workbench.probe wake
@@ -212,7 +213,7 @@ parts:
             id: turn
             items:
               - text: >
-                  Make sure MonsterTix is still *running* on its card. If it
+                  Make sure MonsterTix is still *running* on the left. If it
                   is not, start it; the clock needs a door to knock on.
                 service: monstertix
                 action: start

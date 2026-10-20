@@ -1,9 +1,10 @@
 import { createContext, useContext, useMemo, useState } from "react";
 
-import { api, type Exercise as ExerciseSpec } from "../lib/api";
-import { AppDock } from "./AppDock";
+import { api, type Exercise as ExerciseSpec, type PaneTab } from "../lib/api";
 import { parseBlocks, type Block } from "../lib/blocks";
 import { CodePageProvider, useCodePage, type CodeRef } from "../lib/code";
+import { useBench } from "../lib/bench";
+import { APPS } from "./AppFrame";
 import { FileExplorer } from "./FileExplorer";
 import { t } from "../i18n";
 import { Exercise, TaskSlot } from "./Exercise";
@@ -108,6 +109,20 @@ function Figure({ src, caption }: { src?: string; caption: string }) {
       <img src={url} alt={caption} className="mx-auto rounded-2xl border" style={{ borderColor: "var(--hairline)" }} />
       {caption && <figcaption className="mt-2 text-center text-[0.8rem]" style={{ color: "var(--fg-faint)" }}>{caption}</figcaption>}
     </figure>
+  );
+}
+
+/* :::app tab="agent venue": buttons that bring those apps forward. */
+function ShowApps({ tabs }: { tabs: PaneTab[] }) {
+  const { focus } = useBench();
+  return (
+    <div className="my-4 flex flex-wrap items-center gap-2">
+      {tabs.filter((tab) => APPS[tab]).map((tab) => (
+        <button key={tab} type="button" className="btn" onClick={() => focus(tab)}>
+          {t("Show {where}", { where: t(APPS[tab].label) })} →
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -238,7 +253,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
           case "console":
             return <ConsoleLink key={index} url={block.url} label={block.label} note={block.note} />;
           case "app":
-            return <AppDock key={index} tabs={block.tabs} />;
+            return <ShowApps key={index} tabs={block.tabs} />;
           case "task":
             return <TaskSlot key={index} id={block.id} />;
           case "taskcard":

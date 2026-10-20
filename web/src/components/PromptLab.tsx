@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type PromptTry, type Task } from "../lib/api";
 import { useBench } from "../lib/bench";
 import { t } from "../i18n";
-import { useDock } from "./AppDock";
 import { Inline } from "./Inline";
 
 /* Step 2's prompt lab. Pick a wording (or write one), swap it into
@@ -25,8 +24,7 @@ function verdict(attempt: PromptTry): { text: string; color: string } {
 }
 
 export function PromptLab({ slug, task, color }: { slug: string; task: Task; color: string }) {
-  const { refresh, bump } = useBench();
-  const dock = useDock();
+  const { refresh, bump, focus } = useBench();
   const presets = task.prompts ?? [];
   const [text, setText] = useState(presets[0]?.text ?? "");
   const [label, setLabel] = useState(presets[0]?.label ?? "");
@@ -111,7 +109,7 @@ export function PromptLab({ slug, task, color }: { slug: string; task: Task; col
     } catch {
       /* the text is on screen to select by hand */
     }
-    dock?.focus("agent");
+    focus("agent");
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   }

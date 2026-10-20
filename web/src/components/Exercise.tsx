@@ -1,8 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 
-import type { Exercise as ExerciseSpec, PaneTab, Task } from "../lib/api";
-import { useBench } from "../lib/bench";
-import { AppDock, DockProvider } from "./AppDock";
+import type { Exercise as ExerciseSpec, Task } from "../lib/api";
 import { t } from "../i18n";
 import { FileExplorer } from "./FileExplorer";
 import { PromptLab } from "./PromptLab";
@@ -14,28 +12,10 @@ import { Turn } from "./Turn";
    Its tasks come from step.yaml: prepare (load a step's code), files (the
    explorer), turn (the numbered actions).
 
-   The apps the actions use are framed right under the card: a message for
-   the agent brings the ADK web UI, a venue button the venue panel. An
-   exercise can name them itself with `apps: [agent, venue]`. */
-
-function appsFor(exercise: ExerciseSpec, venueOnLeft: boolean): PaneTab[] {
-  if (exercise.apps) return exercise.apps;
-  const found: PaneTab[] = [];
-  const add = (tab?: PaneTab) => {
-    if (tab && !found.includes(tab)) found.push(tab);
-  };
-  for (const task of exercise.tasks) {
-    if (task.kind === "app") add(task.tab);
-    if (task.kind === "prompts") add("agent");
-    for (const item of task.items ?? []) {
-      add(item.in);
-      add(item.look);
-      if (item.press) add("venue");
-    }
-  }
-  // Already on the left of the page: not framed a second time.
-  return venueOnLeft ? found.filter((tab) => tab !== "venue") : found;
-}
+   The apps the actions use are not framed here. The world (the venue panel,
+   the MonsterTix page) is in the left column of every page, and the ADK web
+   UI opens in a drawer from the top right; an action's button brings the
+   right one forward. */
 
 /* One task, rendered where the card puts it. */
 function TaskView({ task, slug, color, prepared }: { task: Task; slug: string; color: string; prepared: boolean }) {
@@ -83,14 +63,11 @@ export function Exercise({ slug, exercise, color, children, placed = [] }: {
 }) {
   // A prepare task already shows which step is loaded; the explorer need not repeat it.
   const prepared = exercise.tasks.some((task) => task.kind === "prepare");
-  const { venueOnLeft } = useBench();
-  const apps = appsFor(exercise, venueOnLeft);
   const render = (id: string) => {
     const task = exercise.tasks.find((candidate) => candidate.id === id);
     return task ? <TaskView task={task} slug={slug} color={color} prepared={prepared} /> : null;
   };
   return (
-    <DockProvider>
     <section className="my-7 rounded-3xl border p-5 sm:p-7"
              style={{ borderColor: `color-mix(in srgb, ${color} 40%, var(--hairline))`, background: "var(--card)" }}>
       <div className="kicker" style={{ color }}>{t("Your turn")}</div>
@@ -109,7 +86,5 @@ export function Exercise({ slug, exercise, color, children, placed = [] }: {
         </CardTasks.Provider>
       )}
     </section>
-    {apps.length > 0 && <AppDock tabs={apps} />}
-    </DockProvider>
   );
 }

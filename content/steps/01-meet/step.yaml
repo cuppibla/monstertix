@@ -2,7 +2,6 @@ title: Meet MonsterTix
 kicker: Chapter 1
 minutes: 5
 color: purple
-venue: true             # the live venue panel in a left column, for the whole chapter
 stage: 1
 summary: >
   One task for the whole course: two tickets to the Amsterdam show, for you and
@@ -86,11 +85,12 @@ parts:
             id: turn
             items:
               - text: >
-                  Wait for the bar above to say the agent is **running**. The
-                  ADK web UI appears under this card, on the **agent** tab.
+                  Wait for the bar above to say the agent is **running**. Then
+                  press **ADK web UI** at the top right of the page: it opens
+                  in a drawer over the reading. Esc or × puts it away.
                 look: agent
               - text: >
-                  At the top right of the agent card, press the **log** icon.
+                  At the top of the drawer, press **log**.
                   Read the first lines: `adk web` started with
                   `--session_service_uri` pointing at `sessions.db` and
                   `--artifact_service_uri` pointing at `artifacts/`. Close it.
@@ -109,7 +109,7 @@ parts:
             highlight: '^root_agent = Agent\(|^    (name|model|instruction|tools)='
             highlightLabel: 'The whole agent: a name, a model, an instruction, and three Python functions. `adk web` found it because the file is `agent.py` and the variable is `root_agent`.'
     expect:
-      - "The agent card's switch says **running**, and the ADK web UI shows `concert` in its app list."
+      - "The **ADK web UI** button at the top right has a green dot, the drawer's switch says **running**, and the dev UI shows `concert` in its app list."
       - "The agent's log begins with the `adk web` command line, including `--session_service_uri` and `--artifact_service_uri`."
       - "The venue panel on the left reset: 8 shows, all seats available, 0 orders."
     checks:

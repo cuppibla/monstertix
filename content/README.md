@@ -24,7 +24,6 @@ title: Pause, Restart, Resume
 kicker: Chapter 4            # default "Chapter N"; the appendix says "Reference"
 minutes: 25
 color: amber            # cyan, purple, blue, amber, green, red, lime, teal
-venue: true             # optional: the live venue panel in a left column (chapter 1)
 stage: 4                # the solution stage this page's code is: chapters and stages are 1:1
 appendix: true          # optional: listed after the chapters as "Reference", not counted as one
 summary: One or two sentences under the title.
@@ -112,12 +111,16 @@ that carry the idea, not every changed line.
 | `resume: task` | the **Resume current task** button: answers the current session's queue wait (see `:::task`) |
 | only `text` | an instruction with no button |
 
-The apps an exercise uses are framed right under its card, in tabs: every
-`in:` and `look:` app, and the venue panel when there is a `press:`. To name
-them yourself, give the exercise `apps: [agent, venue]`. Each app's card has
-its process's switch, log, and (for the agent) kill -9 and Restart at its top
-right. The venue starts with the workbench and is always on. The clock has no
-app; a `clock:` item shows its switch and log beside the button.
+The apps are in the same place on every page, not under the card. The world
+column on the left holds the venue panel and the MonsterTix page, in tabs, with
+MonsterTix's switch and log on its tab; the ADK web UI opens in a drawer from
+the **ADK web UI** button at the top right, with the agent's switch, log,
+kill -9 and Restart at the top of the drawer. An `in:` or `look:` button brings
+the right one forward. When a section opens, the world column shows the first
+venue/MonsterTix app its exercises mention (`apps:`, `in:`, `look:`, `press:`);
+name it yourself with `apps: [monstertix, venue]`. The venue starts with the
+workbench and is always on. The clock has no app; a `clock:` item shows its
+switch and log beside the button.
 
 Venue buttons (`venue:`): `reset`, `advance-queue` (SKIP THE WAIT), `sellout`
 (body `{city, section}`), `hang-once` (BREAK THE NEXT PURCHASE), `clock`

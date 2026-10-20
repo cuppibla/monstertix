@@ -1,21 +1,30 @@
 /* What every part of the bench shares: the services and which step is loaded
-   (polled from the server, never stored here), and whether the services
-   column is open. */
+   (polled from the server, never stored here), which app the world column
+   shows, and whether the ADK web drawer is open. */
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
-import { api, type Service, type Stage } from "./api";
+import { api, type PaneTab, type Service, type Stage } from "./api";
+
+/** The apps in the left column: the world the agent acts on. */
+export type WorldTab = Exclude<PaneTab, "agent">;
 
 type Bench = {
   services: Service[];
   stage: Stage | null;
   refresh: () => Promise<void>;
   service: (name: string) => Service | undefined;
+  /** The world column: open, or folded to a strip. */
   railOpen: boolean;
   setRailOpen: (open: boolean) => void;
-  /** The page shows the venue panel in a left column, so it is not repeated under a card. */
-  venueOnLeft: boolean;
-  setVenueOnLeft: (on: boolean) => void;
+  /** Which app the world column shows: the venue panel or the MonsterTix page. */
+  railTab: WorldTab;
+  setRailTab: (tab: WorldTab) => void;
+  /** The ADK web UI, in a drawer from the top right. */
+  drawerOpen: boolean;
+  setDrawerOpen: (open: boolean) => void;
+  /** Bring an app forward: the venue and MonsterTix in the world column, the dev UI in its drawer. */
+  focus: (tab: PaneTab) => void;
   /** Bumped when something reloads code or restarts a process, so frames and files re-read. */
   epoch: number;
   bump: () => void;
@@ -43,8 +52,9 @@ export function BenchProvider({ children }: { children: ReactNode }) {
   const [services, setServices] = useState<Service[]>([]);
   const [stage, setStage] = useState<Stage | null>(null);
   const [railOpen, setRailOpenState] = useState(() => stored("monstertix.rail", "open") === "open");
+  const [railTab, setRailTab] = useState<WorldTab>("venue");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [epoch, setEpoch] = useState(0);
-  const [venueOnLeft, setVenueOnLeft] = useState(false);
   const inFlight = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -74,6 +84,15 @@ export function BenchProvider({ children }: { children: ReactNode }) {
     store("monstertix.rail", open ? "open" : "closed");
   }, []);
 
+  const focus = useCallback((tab: PaneTab) => {
+    if (tab === "agent") {
+      setDrawerOpen(true);
+    } else {
+      setRailTab(tab);
+      setRailOpen(true);
+    }
+  }, [setRailOpen]);
+
   const value: Bench = {
     services,
     stage,
@@ -81,8 +100,11 @@ export function BenchProvider({ children }: { children: ReactNode }) {
     service: (name) => services.find((s) => s.name === name),
     railOpen,
     setRailOpen,
-    venueOnLeft,
-    setVenueOnLeft,
+    railTab,
+    setRailTab,
+    drawerOpen,
+    setDrawerOpen,
+    focus,
     epoch,
     bump: () => setEpoch((n) => n + 1),
   };

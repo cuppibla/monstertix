@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, BrowserRouter as Router, Routes, useNavigate, useParams } from "react-router-dom";
+import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useNavigate, useParams } from "react-router-dom";
 
-import { api, type CoursePayload, type StepFull } from "./lib/api";
+import { api, type CoursePayload, type PaneTab, type StepFull } from "./lib/api";
 import { setStages } from "./lib/numbers";
-import { BenchProvider, useBench } from "./lib/bench";
+import { BenchProvider, useBench, type WorldTab } from "./lib/bench";
 import { LangProvider, saveLang, savedLang, t } from "./i18n";
+import { AgentDrawer } from "./components/AgentDrawer";
 import { Content } from "./components/Content";
-import { VenueRail } from "./components/VenueRail";
+import { WorldRail } from "./components/WorldRail";
 import { TopNav } from "./components/TopNav";
 import { Watch } from "./components/Watch";
 
-/* The bench: the step, full width. Apps are not in a column of their own:
-   each one appears in the reading under the "Your turn" card that uses it,
-   with its process's switch at the card's top right. Only the steps about
-   the world (`venue: true`) keep a left column, for the live venue panel. */
+/* The bench: the world on the left, the step in the middle, the ADK web UI in
+   a drawer from the top right. The world column (the venue panel and the
+   MonsterTix page) and the drawer are mounted once, outside the step routes,
+   so their frames survive moving between sections. */
 
 function neighbours(course: CoursePayload, slug: string, partId: string) {
   const flat: { slug: string; part: string; label: string }[] = [];
@@ -41,10 +42,27 @@ const MOVED: Record<string, string> = {
   cloud: "cloud/a",
 };
 
-function StepPage({ course, lang, onLang }: { course: CoursePayload; lang: string; onLang: (l: string) => void }) {
+/* The app a section's actions use first, among the two in the world column:
+   the column shows it when the section opens. */
+function worldTabFor(part: StepFull["parts"][number]): WorldTab | null {
+  const seen: PaneTab[] = [];
+  for (const exercise of Object.values(part.exercises ?? {})) {
+    for (const tab of exercise.apps ?? []) seen.push(tab);
+    for (const task of exercise.tasks) {
+      for (const item of task.items ?? []) {
+        if (item.in) seen.push(item.in);
+        if (item.look) seen.push(item.look);
+        if (item.press) seen.push("venue");
+      }
+    }
+  }
+  return (seen.find((tab) => tab !== "agent") as WorldTab | undefined) ?? null;
+}
+
+function StepPage({ course, lang }: { course: CoursePayload; lang: string }) {
   const { slug = "", part: partParam } = useParams();
   const navigate = useNavigate();
-  const { railOpen, setVenueOnLeft } = useBench();
+  const { setRailTab } = useBench();
   const [step, setStep] = useState<StepFull | null>(null);
   const known = course.steps.some((s) => s.slug === slug);
   const moved = !known && MOVED[slug] && course.steps.some((s) => s.slug === MOVED[slug].split("/")[0]) ? MOVED[slug] : "";
@@ -58,16 +76,19 @@ function StepPage({ course, lang, onLang }: { course: CoursePayload; lang: strin
   const part = step?.parts.find((p) => p.id === (partParam ?? "")) ?? step?.parts[0] ?? null;
   const partId = part?.id ?? "";
   const many = (step?.parts.length ?? 0) > 1;
-  // The venue panel sits on the left for a whole step (`venue: true` on the
-  // step) or for one part (`venue: true` on the part).
-  const venueOnLeft = !!step && (step.venue || !!part?.venue);
-  useEffect(() => setVenueOnLeft(venueOnLeft), [venueOnLeft, setVenueOnLeft]);
   const { previous, next, index, flat } = neighbours(course, slug, partId);
   const accent = `var(--${step?.color ?? "cyan"})`;
 
   useEffect(() => {
     document.documentElement.style.setProperty("--accent", accent);
   }, [accent]);
+
+  // A section that uses MonsterTix opens with the MonsterTix page in the world column.
+  useEffect(() => {
+    if (!part) return;
+    const tab = worldTabFor(part);
+    if (tab) setRailTab(tab);
+  }, [part, setRailTab]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -83,65 +104,71 @@ function StepPage({ course, lang, onLang }: { course: CoursePayload; lang: strin
   if (moved) return <Navigate to={`/step/${moved}`} replace />;
 
   return (
-    <>
-      <TopNav course={course.course} steps={course.steps} activeSlug={slug} activePart={partId}
-              languages={course.languages} lang={lang} onLang={onLang} />
-      <div className="bench" data-rail={!venueOnLeft ? "none" : railOpen ? "wide" : "closed"}>
-        {venueOnLeft && <aside className="bench__rail"><VenueRail /></aside>}
-
-        <main className="bench__main">
-          <div className="mx-auto max-w-[56rem] pb-24">
-            {!step || !part || step.error ? (
-              <div className="py-28 text-center text-sm" style={{ color: "var(--fg-faint)" }}>
-                {step?.error ? (
-                  <pre className="log mx-auto max-w-2xl whitespace-pre-wrap rounded-lg p-4 text-left" style={{ color: "var(--bad)" }}>
-                    {t("This step's step.yaml does not parse:")}{"\n"}{step.error}
-                  </pre>
-                ) : t("loading…")}
-              </div>
-            ) : (
-              <>
-                <div className="px-1 pt-12 pb-3 text-center">
-                  <div className="kicker" style={{ color: accent }}>
-                    {step.kicker}{many && part.id ? part.id : ""}{many && part.label ? ` · ${part.label}` : ""}
-                  </div>
-                  <h1 className="display text-balance mx-auto mt-4 text-[2.2rem] leading-[1.1] sm:text-[2.6rem]">
-                    {part.headline || step.title}
-                  </h1>
-                  {step.summary && (!many || part === step.parts[0]) && (
-                    <p className="text-balance mx-auto mt-4 max-w-2xl text-[1.02rem] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
-                      {step.summary}
-                    </p>
-                  )}
-                </div>
-
-                <Content markdown={part.body} slug={step.slug} color={accent} exercises={part.exercises} stage={step.stage} />
-                <Watch slug={step.slug} part={part.id} checks={part.checks} expect={part.expect} title={part.checksTitle} color={accent} />
-
-                <nav className="mt-12 flex items-center justify-between gap-4 border-t pt-6 text-sm" style={{ borderColor: "var(--hairline)" }}>
-                  {previous ? (
-                    <button type="button" onClick={() => navigate(href(previous))} className="min-w-0 text-left" style={{ color: "var(--fg-muted)" }}>
-                      <span className="kicker block" style={{ color: "var(--fg-faint)" }}>{t("back")}</span>
-                      <span className="truncate">← {previous.label}</span>
-                    </button>
-                  ) : <span />}
-                  <span className="shrink-0 text-xs" style={{ color: "var(--fg-faint)" }}>{index + 1} / {flat.length}</span>
-                  {next ? (
-                    <button type="button" onClick={() => navigate(href(next))} className="min-w-0 text-right" style={{ color: accent }}>
-                      <span className="kicker block" style={{ color: "var(--fg-faint)" }}>{t("next")}</span>
-                      <span className="truncate font-medium">{next.label} →</span>
-                    </button>
-                  ) : <span />}
-                </nav>
-                {course.course.credit && (
-                  <p className="mt-12 text-center text-[0.76rem]" style={{ color: "var(--fg-faint)" }}>{course.course.credit}</p>
-                )}
-              </>
+    <div className="mx-auto max-w-[56rem] pb-24">
+      {!step || !part || step.error ? (
+        <div className="py-28 text-center text-sm" style={{ color: "var(--fg-faint)" }}>
+          {step?.error ? (
+            <pre className="log mx-auto max-w-2xl whitespace-pre-wrap rounded-lg p-4 text-left" style={{ color: "var(--bad)" }}>
+              {t("This step's step.yaml does not parse:")}{"\n"}{step.error}
+            </pre>
+          ) : t("loading…")}
+        </div>
+      ) : (
+        <>
+          <div className="px-1 pt-12 pb-3 text-center">
+            <div className="kicker" style={{ color: accent }}>
+              {step.kicker}{many && part.id ? part.id : ""}{many && part.label ? ` · ${part.label}` : ""}
+            </div>
+            <h1 className="display text-balance mx-auto mt-4 text-[2.2rem] leading-[1.1] sm:text-[2.6rem]">
+              {part.headline || step.title}
+            </h1>
+            {step.summary && (!many || part === step.parts[0]) && (
+              <p className="text-balance mx-auto mt-4 max-w-2xl text-[1.02rem] leading-relaxed" style={{ color: "var(--fg-muted)" }}>
+                {step.summary}
+              </p>
             )}
           </div>
-        </main>
 
+          <Content markdown={part.body} slug={step.slug} color={accent} exercises={part.exercises} stage={step.stage} />
+          <Watch slug={step.slug} part={part.id} checks={part.checks} expect={part.expect} title={part.checksTitle} color={accent} />
+
+          <nav className="mt-12 flex items-center justify-between gap-4 border-t pt-6 text-sm" style={{ borderColor: "var(--hairline)" }}>
+            {previous ? (
+              <button type="button" onClick={() => navigate(href(previous))} className="min-w-0 text-left" style={{ color: "var(--fg-muted)" }}>
+                <span className="kicker block" style={{ color: "var(--fg-faint)" }}>{t("back")}</span>
+                <span className="truncate">← {previous.label}</span>
+              </button>
+            ) : <span />}
+            <span className="shrink-0 text-xs" style={{ color: "var(--fg-faint)" }}>{index + 1} / {flat.length}</span>
+            {next ? (
+              <button type="button" onClick={() => navigate(href(next))} className="min-w-0 text-right" style={{ color: accent }}>
+                <span className="kicker block" style={{ color: "var(--fg-faint)" }}>{t("next")}</span>
+                <span className="truncate font-medium">{next.label} →</span>
+              </button>
+            ) : <span />}
+          </nav>
+          {course.course.credit && (
+            <p className="mt-12 text-center text-[0.76rem]" style={{ color: "var(--fg-faint)" }}>{course.course.credit}</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* The frame around every step: the top bar, the world column, the drawer. */
+function Shell({ course, lang, onLang }: { course: CoursePayload; lang: string; onLang: (l: string) => void }) {
+  const { slug = "", part = "" } = useParams();
+  const { railOpen } = useBench();
+  return (
+    <>
+      <TopNav course={course.course} steps={course.steps} activeSlug={slug} activePart={part}
+              languages={course.languages} lang={lang} onLang={onLang} />
+      <div className="bench" data-rail={railOpen ? "wide" : "closed"}>
+        <aside className="bench__rail"><WorldRail /></aside>
+        <main className="bench__main"><Outlet /></main>
       </div>
+      <AgentDrawer />
     </>
   );
 }
@@ -196,6 +223,7 @@ export default function App() {
 
   const first = course.steps[0]?.slug ?? "";
   const effective = course.languages.includes(lang) ? lang : "en";
+  const page = <StepPage course={course} lang={effective} />;
   return (
     <LangProvider lang={effective}>
       <BenchProvider>
@@ -204,8 +232,10 @@ export default function App() {
           <Router>
             <Routes>
               <Route path="/" element={<Navigate to={`/step/${first}`} replace />} />
-              <Route path="/step/:slug" element={<StepPage course={course} lang={effective} onLang={changeLang} />} />
-              <Route path="/step/:slug/:part" element={<StepPage course={course} lang={effective} onLang={changeLang} />} />
+              <Route element={<Shell course={course} lang={effective} onLang={changeLang} />}>
+                <Route path="/step/:slug" element={page} />
+                <Route path="/step/:slug/:part" element={page} />
+              </Route>
               <Route path="*" element={<Navigate to={`/step/${first}`} replace />} />
             </Routes>
           </Router>
