@@ -12,7 +12,7 @@ type LearningStatus = {
   next: string; loaded?: boolean; busy?: string | null; checks: Check[]; receipt?: Receipt;
   attempt: null | {id: string; sessions: string[]; created_at: number; error?: string; preparation?: string;
     last_said: string[]; marks: {timer?: {state: string; due_at: number}; scenario?: {steps: string[]; ready: boolean}}};
-  task: null | {session_id?: string; kind_label?: string; paused?: string; events?: number;
+  task: null | {session_id?: string; user_id?: string; kind_label?: string; paused?: string; events?: number;
     pending?: {id: string; kind: string}; pending_message?: string; authorization_text?: string;
     invocations?: number; queue_ticket?: string; last_order?: string; ready_to_buy?: boolean};
   venue?: {up: boolean; orders: number | null; ticket?: {ticket: string; position: number}};
@@ -70,8 +70,9 @@ function MemoryComparison({sessions}: {sessions: (RecordSession|null)[]}) {
 type RecordPayload = {sessions: ({id:string; stored_state:Record<string,unknown>; events:RecordedEvent[]} | null)[];
   memory:string; archived?:boolean; memory_change?:{before:string;after:string;added:string[]}};
 
-function Records({ slug, epoch }: { slug: string; epoch: string }) {
-  const [open, setOpen] = useState(false);
+function Records({ slug, epoch, open, setOpen }: {
+  slug: string; epoch: string; open: boolean; setOpen: (open: boolean) => void;
+}) {
   const [record, setRecord] = useState<RecordPayload | null>(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
@@ -79,7 +80,7 @@ function Records({ slug, epoch }: { slug: string; epoch: string }) {
     catch(e) {setError((e as Error).message);}
   }, [slug]);
   useEffect(() => {if (open) load();}, [open, load, epoch]);
-  return <details className="guide-more" onToggle={e=>setOpen(e.currentTarget.open)}>
+  return <details className="guide-more" open={open} onToggle={e=>setOpen(e.currentTarget.open)}>
     <summary>{slug === "remember" ? "Inspect the two stores · actual events, state and memory"
       : slug === "resume" ? "Inspect the resume · actual invocation and node records"
       : "Inspect the evidence · actual events and state"}</summary>
@@ -115,6 +116,10 @@ export function Guided() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [answer, setAnswer] = useState("");
+  // Browsing a step never runs it. Only the current action can change the task.
+  const [selectedPhase, setSelectedPhase] = useState<number | null>(null);
+  const [recordsOpen, setRecordsOpen] = useState(false);
+  const recordsRef = useRef<HTMLDivElement>(null);
   const activeSlug = useRef(slug);
   activeSlug.current = slug;
   const reload = useCallback(async () => {
@@ -127,6 +132,7 @@ export function Guided() {
 
   useEffect(() => {
     setState(null); setError(""); setAnswer(""); setCurrent(null);
+    setSelectedPhase(null); setRecordsOpen(false);
     document.documentElement.style.setProperty("--accent", `var(--${slug==="resume"?"cyan":slug==="remember"?"green":"purple"})`);
     window.scrollTo({top:0});
     reload();
@@ -148,7 +154,7 @@ export function Guided() {
     try {
       const result = await learningFetch<LearningStatus>(`/api/learning/${slug}/${action}`,
         {attempt_id:state?.attempt?.id,...extra});
-      if(activeSlug.current===slug){setState(result);setAnswer("");}
+      if(activeSlug.current===slug){setState(result);setAnswer("");setSelectedPhase(null);}
       if(action==="prepare"||action==="restart"||action==="restart-service")bump();
       await refresh();
     } catch(e) {if(activeSlug.current===slug)setError((e as Error).message);}
@@ -162,22 +168,34 @@ export function Guided() {
     text:"The process is stopped. Bring it back with this experiment's existing session and saved state.",
     button:"Restart service", expect:"The same session is available. No request or answer is sent automatically.", prompt:undefined}
     : guide.actions[next], receipt=state?.receipt;
-  const phase= next==="prepare"||next==="request"?0
-    :slug==="remember"?(next==="remember"?1:2)
-    :slug==="resume"?(next==="kill"?1:2)
-    :slug==="buy"?(next==="answer"?0:next==="scenario"?1:2):1;
+  const phase = Math.max(0, guide.phases.findIndex(item=>item.actions.includes(next)));
+  const resultPhase = guide.phases.length;
+  const view = selectedPhase ?? (receipt ? resultPhase : phase);
+  const preview = guide.phases[view];
+  const previewActions = preview?.actions.map(name=>guide.actions[name]).filter(Boolean) ?? [];
   const keys=Object.keys(guides), nextChapter=keys[keys.indexOf(slug)+1];
   const sessionLink=state?.task?.session_id
-    ? `/svc/agent/dev-ui/?app=concert&session=${encodeURIComponent(state.task.session_id)}` : "";
+    ? `/svc/agent/dev-ui/?app=concert&session=${encodeURIComponent(state.task.session_id)}&userId=${encodeURIComponent(state.task.user_id??"user")}` : "";
   return <div className="guide-page">
     <div className="kicker">Chapter {guide.number} · {guide.minutes}</div>
     <h1>{guide.title}</h1><p className="guide-intro">{guide.intro}</p>
     <p className="guide-boundary"><b>Task boundary</b> {guide.boundary}</p>
-    <div className="guide-phases" aria-label="Chapter flow">
-      {guide.phases.map((label,i)=><span key={label} className={!receipt&&phase===i?"active":""}>{i+1} · {label}</span>)}
-      <span className={receipt?"active":""}>Result</span>
-    </div>
-    {!receipt && <section className="guide-action" aria-live="polite">
+    <nav className="guide-phases" aria-label="Chapter flow">
+      {guide.phases.map(({label},i)=><button type="button" key={label}
+        aria-pressed={view===i} aria-controls="guide-phase-panel"
+        className={view===i?"active":""} onClick={()=>setSelectedPhase(i)}>{i+1} · {label}</button>)}
+      <button type="button" aria-pressed={view===resultPhase} aria-controls="guide-phase-panel"
+        className={view===resultPhase?"active":""} onClick={()=>setSelectedPhase(resultPhase)}>Result</button>
+    </nav>
+    {receipt && <div className="guide-repeat">
+      <div><b>Experiment complete.</b><p className="guide-small">Review any step above, or start again.
+        Starting again resets live sessions, the venue and seeded memory; saved results stay available.</p></div>
+      <button className="btn" disabled={working} onClick={()=>act("prepare",{fresh:true})}>
+        {working?"Preparing…":"Start a new experiment"}
+      </button>
+    </div>}
+    <div id="guide-phase-panel" role="region" aria-label={preview?.label ?? "Result"}>
+    {!receipt && view===phase ? <section className="guide-action" aria-live="polite">
       <div className="kicker">Your next action</div>
       {next==="prepare"?<>
         <h2>{guide.number===1?"Check the rig, then start the story.":`Prepare chapter ${guide.number}.`}</h2>
@@ -212,9 +230,26 @@ export function Guided() {
         <button className="btn" onClick={reload}>Refresh evidence</button>
         {slug==="wake"&&<button className="btn ml-2" disabled={working} onClick={()=>act("clock")}>Start the clock again</button>}
       </>}
-      {(error||attempt?.error)&&<p className="guide-error" role="alert">{error||attempt?.error}</p>}
-      {working&&<div className="working-bar mt-4 h-[3px] rounded-full" aria-label="Action in progress" />}
-    </section>}
+    </section> : preview ? <section className="guide-action">
+      <div className="kicker">Step {view+1} · {receipt?"Review":"Overview"}</div>
+      {previewActions.length ? previewActions.map(item=><div key={item.title}>
+        <h2>{item.title}</h2><p>{item.text}</p>
+        {item.prompt&&<blockquote>{item.prompt}</blockquote>}
+        <p className="guide-expect"><b>What to look for</b> {item.expect}</p>
+      </div>) : <><h2>{preview.label}</h2><p>Prepare the chapter to check the model, agent and venue together.</p></>}
+      {receipt
+        ? <button className="btn" onClick={()=>setSelectedPhase(resultPhase)}>View recorded result</button>
+        : <><p className="guide-small">Viewing a step does not run it. Continue from your current step to keep the same task.</p>
+          <button className="btn btn--solid" onClick={()=>setSelectedPhase(null)}>Return to current step · {phase+1}</button></>}
+    </section> : <>
+      {(state?.checks.length||receipt) ? <Result checks={state?.checks??[]} receipt={receipt}/> :
+        <section className="guide-action"><h2>No result yet.</h2>
+          <p>Complete the experiment to see its recorded evidence here.</p></section>}
+      {!receipt&&<button className="btn" onClick={()=>setSelectedPhase(null)}>Return to current step · {phase+1}</button>}
+    </>}
+    </div>
+    {(error||attempt?.error)&&<p className="guide-error" role="alert">{error||attempt?.error}</p>}
+    {working&&<div className="working-bar mt-4 h-[3px] rounded-full" aria-label="Action in progress" />}
 
     {attempt && <div className="guide-taskline">
       <div><span className="guide-small">This experiment</span><br/><code>{state?.task?.session_id??attempt.sessions.join(" → ")}</code></div>
@@ -222,17 +257,24 @@ export function Guided() {
       {state?.loaded&&<div><span className="guide-small">Invocations</span><br/>{state?.task?.invocations??0}</div>}
       {state?.venue?.ticket&&<div><span className="guide-small">Queue position · not seconds</span><br/>{state.venue.ticket.position.toLocaleString()}</div>}
       {state?.task?.authorization_text&&<div><span className="guide-small">Authorization</span><br/>{state.task.authorization_text}</div>}
-      <div className="flex gap-2"><button className="btn" disabled={!state?.loaded||!sessionLink} onClick={()=>focus("agent")}>Inspect in ADK</button>
-        {state?.loaded&&sessionLink&&<a className="btn" href={sessionLink} target="_blank" rel="noreferrer">Open this session ↗</a>}</div>
+      {state?.loaded&&sessionLink ? <div className="flex flex-wrap gap-2">
+        <button className="btn" onClick={()=>focus("agent")}>Inspect in ADK</button>
+        <a className="btn" href={sessionLink}>Open this session →</a>
+      </div> : <div>
+        <p className="guide-small">This experiment is no longer in the live ADK session. Its saved records are available below.</p>
+        <button className="btn" onClick={()=>{
+          setRecordsOpen(true); recordsRef.current?.scrollIntoView({behavior:"smooth",block:"start"});
+        }}>View saved records</button>
+      </div>}
     </div>}
     {attempt?.last_said?.length && !receipt ? <details className="guide-more"><summary>What the agent said</summary>
       {attempt.last_said.map((said,i)=><p key={i} className="whitespace-pre-wrap">{said}</p>)}</details>:null}
-    <Result checks={state?.checks??[]} receipt={receipt}/>
-    {attempt&&<Records key={`records-${slug}`} slug={slug} epoch={`${attempt.id}:${state?.task?.events??0}`}/>}
+    {attempt&&<div ref={recordsRef}><Records key={`records-${slug}`} slug={slug}
+      open={recordsOpen} setOpen={setRecordsOpen} epoch={`${attempt.id}:${state?.task?.events??0}`}/></div>}
     <GuideReading key={`reading-${slug}`} slug={slug}/>
     <details className="guide-more"><summary>Recovery and preparation details</summary>
       <p>A fresh experiment replaces the live task and seeded memory. Earned receipts remain. Use it to deliberately repeat this chapter, not to resume a paused task.</p>
-      <button className="btn" disabled={working} onClick={()=>act("prepare",{fresh:true})}>Start a fresh chapter {guide.number} experiment</button>
+      {!receipt&&<button className="btn" disabled={working} onClick={()=>act("prepare",{fresh:true})}>Start a fresh chapter {guide.number} experiment</button>}
       {attempt?.preparation&&<pre>{attempt.preparation}</pre>}
     </details>
     <div className="guide-footer"><span>{receipt?"Evidence saved. You can move on.":"You can read ahead; completion requires the experiment's evidence."}</span>

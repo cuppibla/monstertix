@@ -496,8 +496,13 @@ img { max-width: 100%; }
 .guide-boundary { color: var(--fg-muted); font-size: .81rem; padding: .7rem 0; border-block: 1px solid var(--hairline); }
 .guide-boundary b { color: var(--fg); margin-right: .4rem; }
 .guide-phases { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1.2rem 0; color: var(--fg-muted); font-size: .76rem; }
-.guide-phases span { border: 1px solid var(--hairline); border-radius: 2rem; padding: .3rem .7rem; }
+.guide-phases button { border: 1px solid var(--hairline); border-radius: 2rem; padding: .3rem .7rem; cursor: pointer; }
+.guide-phases button:hover { border-color: var(--accent); color: var(--accent); }
+.guide-phases button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .guide-phases .active { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: var(--accent); color: var(--accent); }
+.guide-repeat { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; padding: .8rem 0; }
+.guide-repeat > div { flex: 1; min-width: min(100%, 16rem); }
+.guide-repeat .btn { flex-shrink: 0; }
 .guide-action { border: 1px solid var(--hairline-strong); background: var(--card); border-radius: 1rem; padding: 1.4rem; margin: 1.3rem 0; }
 .guide-action .kicker { color: var(--accent); }
 .guide-action > p, .guide-concept > p { color: var(--fg-muted); }

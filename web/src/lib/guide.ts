@@ -4,7 +4,7 @@ export type GuideAction = {
 };
 export type Guide = {
   number: number; title: string; minutes: string; intro: string; boundary: string;
-  phases: string[]; concept: string; explanation: string;
+  phases: {label: string; actions: string[]}[]; concept: string; explanation: string;
   source: string; highlight: string; actions: Record<string, GuideAction>;
 };
 const request = "Get me and Sam two tickets to the Amsterdam show.";
@@ -13,7 +13,7 @@ export const guides: Record<string, Guide> = {
     number: 1, title: "One night out. Two tickets.", minutes: "3–5 min",
     intro: "You and Sam want to see The Midnight Signal in Amsterdam. Sam can only make the weekend, and you prefer to avoid the upper bowl. You cannot spend the whole evening watching a ticket page.",
     boundary: "First, check the rig. No booking starts here.",
-    phases: ["Check the environment"],
+    phases: [{label: "Check the environment", actions: ["prepare"]}],
     concept: "A long-running task can outlive the process doing it.",
     explanation: "Getting tickets may take several runs, a wait and a restart. The agent needs somewhere to save progress and something to wake it later. The venue keeps moving while the agent is stopped.",
     source: "agent/concert/agent.py", highlight: "^root_agent = Agent\\(",
@@ -23,7 +23,10 @@ export const guides: Record<string, Guide> = {
     number: 2, title: "Who starts the next check?", minutes: "8–10 min",
     intro: "Ask the agent to keep an eye on the Amsterdam show. It can check now. Once that answer ends, an external request has to start the next run.",
     boundary: "A fresh availability-check session. This chapter does not buy tickets.",
-    phases: ["Ask once", "Let the clock call"],
+    phases: [
+      {label: "Ask once", actions: ["prepare", "request"]},
+      {label: "Let the clock call", actions: ["clock", "waiting", "inspect"]},
+    ],
     concept: "Trigger → Runner → agent",
     explanation: "The prompt is read during an invocation. A clock supplies the next request; the Runner then calls the model and tools again. A server can stay up while no agent invocation is running.",
     source: "agent/concert/agent.py", highlight: "^root_agent = Agent\\(|instruction=|tools=",
@@ -40,7 +43,11 @@ export const guides: Record<string, Guide> = {
     number: 3, title: "What carries into the next conversation?", minutes: "12–15 min",
     intro: "Sam's weekend rule helps the agent pick Saturday. Now save one more preference, then open one new session and see exactly what it can read.",
     boundary: "A fresh memory experiment. You will change session once; the two IDs stay visible in the evidence.",
-    phases: ["Read one run", "Save a preference", "Try a new session"],
+    phases: [
+      {label: "Read one run", actions: ["prepare", "request"]},
+      {label: "Save a preference", actions: ["remember"]},
+      {label: "Try a new session", actions: ["new-session", "inspect"]},
+    ],
     concept: "Session DB and Memory Service have different jobs.",
     explanation: "The Session DB holds this conversation's events and task state. The Memory Service holds selected facts for later tasks to recall. Both persist, but opening a new session does not continue the old task.",
     source: "agent/concert/memory.py", highlight: "^class MarkdownMemoryService|^async def recall|^async def remember|async def search_memory",
@@ -59,7 +66,11 @@ export const guides: Record<string, Guide> = {
     number: 4, title: "Kill the process. Keep your place.", minutes: "12–15 min",
     intro: "Remembering a preference is useful. Now we need to remember unfinished work: which show we picked and where we are in its queue. Pause the task, kill its process, then bring that same task back. Stop before buying.",
     boundary: "A new workflow experiment. Keep this session from the first queue ticket through the restart.",
-    phases: ["Join and pause", "Kill the process", "Restart and resume"],
+    phases: [
+      {label: "Join and pause", actions: ["prepare", "request"]},
+      {label: "Kill the process", actions: ["kill"]},
+      {label: "Restart and resume", actions: ["restart", "resume", "inspect"]},
+    ],
     concept: "Completed nodes reuse records. The waiting node checks again.",
     explanation: "The show choice and queue ticket already have completed records. Resume reuses those outputs. check_front stopped on a wait, so it queries the venue again. The result is ready_to_buy, with zero orders.",
     source: "agent/concert/nightly.py", highlight: "^@node\\(|^def check_front|^def queue_up|^def ready_to_buy",
@@ -78,7 +89,11 @@ export const guides: Record<string, Guide> = {
     number: 5, title: "Buy the one order you agreed to.", minutes: "15–18 min",
     intro: "Seats can sell out while you wait. An order can also be committed before the venue returns an error. See authorization, a guard and a safe retry in one purchase.",
     boundary: "A new purchase task needs your own authorization. From that answer to the final receipt, keep this same session.",
-    phases: ["You set the limit", "Prepare the faults", "Resume and inspect"],
+    phases: [
+      {label: "You set the limit", actions: ["prepare", "request", "answer"]},
+      {label: "Prepare the faults", actions: ["scenario"]},
+      {label: "Resume and inspect", actions: ["resume", "inspect"]},
+    ],
     concept: "One purchase, three protections.",
     explanation: "Your authorization sets the quantity and price limit. The guard checks the live world before a purchase. The Idempotency-Key lets a retry of that same operation retrieve the original order.",
     source: "agent/concert/tools.py", highlight: "^def purchase\\(|key = hashlib|Idempotency-Key|while attempts|attempts.*idempotency_key",
@@ -95,7 +110,11 @@ export const guides: Record<string, Guide> = {
     number: 6, title: "Let the cloud make the next call.", minutes: "8–10 min",
     intro: "You have already tried pausing, restarting and buying. Now watch a real cloud timer resume a waiting task without anyone typing into the page.",
     boundary: "Instructor demonstration in the core course. The cloud needs its own task and authorization; deploying does not move a local session.",
-    phases: ["Check the cloud task", "Trigger Scheduler", "Read the order"],
+    phases: [
+      {label: "Check the cloud task", actions: []},
+      {label: "Trigger Scheduler", actions: []},
+      {label: "Read the order", actions: []},
+    ],
     concept: "Scheduler → Pub/Sub → service → saved task",
     explanation: "The deployment changes where the code and stores run. It still needs a caller, the correct session, an answered queue wait and a safe purchase. This lab's wake-up handler is a single-active-task example.",
     source: "agent/concert/agent.py", highlight: "^app = App|resumability_config=",
