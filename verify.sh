@@ -193,9 +193,9 @@ fi
 # runs out of space fails with an error that does not say so.
 FREE_MB=$(df -Pm "$HOME" 2>/dev/null | awk 'NR==2 {print $4}')
 if [ -n "${FREE_MB:-}" ]; then
-  if [ "$FREE_MB" -lt 300 ]; then
-    fail "disk" "${FREE_MB} MB free in $HOME — clear space before ./setup.sh"
-  elif [ "$FREE_MB" -lt 1000 ]; then
+  if [ "$FREE_MB" -lt 150 ]; then
+    fail "disk" "${FREE_MB} MB free in $HOME — not enough for a build; clear space"
+  elif [ "$FREE_MB" -lt 500 ]; then
     warn "disk" "${FREE_MB} MB free in $HOME — enough, but close"
   else
     pass "disk" "${FREE_MB} MB free in $HOME"
