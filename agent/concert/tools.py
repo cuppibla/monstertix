@@ -33,6 +33,8 @@ def search_events(city: str = "", weekday: str = "") -> dict:
     Returns:
         Tour dates with venue, city, date and weekday.
     """
+    if city and city.strip().upper() in ("NYC", "NY", "NEW YORK CITY"):
+        city = "New York"
     return venue.get("/events", city=city, weekday=weekday)
 
 

@@ -2704,7 +2704,6 @@ gcloud scheduler jobs update pubsub presale-$(gcloud config get-value account | 
 <b>⚠️ Pause it again when you are done.</b> An enabled job fires against your venue every night, or every five minutes if you set the impatient schedule above. <code>gcloud scheduler jobs pause &lt;job&gt; --location=$GOOGLE_CLOUD_REGION</code>.
 </aside>
 
-### Check the state is really durable
 
 Do this part. It is the claim the whole step rests on.
 

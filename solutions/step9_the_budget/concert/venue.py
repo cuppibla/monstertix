@@ -15,6 +15,8 @@ import httpx
 # gets connection refused or — much worse — reaches a stale local venue with
 # different prices and a different queue. Say what is missing instead.
 VENUE_URL = os.environ.get("VENUE_URL", "").rstrip("/")
+if VENUE_URL.endswith("/panel"):
+    VENUE_URL = VENUE_URL[:-6].rstrip("/")
 
 
 def _base() -> str:

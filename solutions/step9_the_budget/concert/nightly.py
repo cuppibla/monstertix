@@ -299,6 +299,10 @@ def queue_up(node_input, ctx: Context) -> Event:
                          happens to check.
     """
     plan = Plan(**node_input)
+    if not plan.event_id or plan.event_id.lower() in ("none", "null", "no_show", "n/a"):
+        print(f"  [queue_up]    no show chosen: {plan.reason}")
+        return Event(output={**plan.model_dump(), "ticket": "", "no_show": True})
+
     ticket = venue.post("/queue/join", {"event_id": plan.event_id})
     if "ticket" not in ticket:
         raise RuntimeError(
@@ -329,6 +333,9 @@ def check_front(node_input):
     with the terminal, and cannot be resumed. The interrupt costs nothing, lives
     in the session store, and survives the machine going away.
     """
+    if node_input.get("no_show"):
+        return Event(output=node_input)
+
     status = venue.get(f"/queue/{node_input['ticket']}")
 
     # The ticket can cease to exist. A place at the front is only held for so
@@ -366,8 +373,15 @@ def brief(node_input, ctx: Context) -> Event:
             "two sentences, as a message I will read over breakfast. Buy nothing."
         ))
 
+    if node_input.get("no_show") or node_input.get("event_id", "").lower() in ("none", "null", "no_show", "n/a"):
+        reason = node_input.get("reason", "No suitable show on the tour fits the criteria or budget.")
+        return Event(output=(
+            f"No show could be booked. Reason: {reason}\n\n"
+            "Tell me that in one or two sentences, as a message I will read over breakfast. Buy nothing."
+        ))
+
     plan = Plan(**{k: v for k, v in node_input.items()
-                   if k not in ("ticket", "lost")})
+                   if k not in ("ticket", "lost", "no_show")})
     return Event(output=(
         f"You are at the front of the queue for {plan.event_id} in {plan.city}. "
         f"The plan is {plan.seats} seats in section {plan.section}, chosen "

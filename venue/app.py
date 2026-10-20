@@ -319,7 +319,10 @@ def list_events(artist: str = "", city: str = "", weekday: str = ""):
     """Search the tour. `artist` is accepted and ignored — there is one artist."""
     sql, args = "SELECT * FROM events WHERE 1=1", []
     if city:
-        sql, args = sql + " AND city LIKE ?", args + [f"%{city}%"]
+        city_query = city.strip()
+        if city_query.upper() in ("NYC", "NY", "NEW YORK CITY"):
+            city_query = "New York"
+        sql, args = sql + " AND city LIKE ?", args + [f"%{city_query}%"]
     if weekday:
         sql, args = sql + " AND weekday = ?", args + [weekday]
     found = rows(sql + " ORDER BY date", tuple(args))
