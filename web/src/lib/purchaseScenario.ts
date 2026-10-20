@@ -1,4 +1,4 @@
-import type { TaskSummary } from "./api";
+import type { ResumeResult, TaskSummary } from "./api";
 
 type Client = {
   stage: () => Promise<{step: number | null}>;
@@ -26,5 +26,30 @@ export async function preparePurchaseScenario(
     const result = await client.venue(action, body);
     if (!result.ok) throw new Error(`${label}: ${result.error || "the venue did not apply this change"}. Finish preparation before resuming.`);
     onStep(label);
+  }
+}
+
+const completing = new Set<string>();
+
+/** The same three venue controls, then one real resume. Never answers a human question. */
+export async function completePurchaseScenario(
+  client: Client & {taskResume: (sessionId: string) => Promise<ResumeResult>},
+  sessionId: string, onStep: (label: string) => void,
+) {
+  if (completing.has(sessionId)) throw new Error("This task is already being completed. Wait for its result.");
+  completing.add(sessionId);
+  try {
+    await preparePurchaseScenario(client, sessionId, onStep);
+    const task = await client.task(sessionId);
+    if ((await client.stage()).step !== 5 || task.session_id !== sessionId ||
+      task.pending?.kind !== "queue" || !task.authorization?.confirmed || task.last_order) {
+      throw new Error("The task changed during preparation. Check its current status before resuming.");
+    }
+    onStep("Resuming this task; waiting for the agent to buy…");
+    const result = await client.taskResume(sessionId);
+    if (!result.ok) throw new Error(result.reason || "The task did not resume. Inspect its Events.");
+    return result;
+  } finally {
+    completing.delete(sessionId);
   }
 }

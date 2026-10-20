@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {preparePurchaseScenario} from "../src/lib/purchaseScenario.ts";
+import {preparePurchaseScenario,completePurchaseScenario} from "../src/lib/purchaseScenario.ts";
 
 function setup(overrides = {}, failAt) {
   const calls = [], visible = [];
@@ -37,4 +37,39 @@ test("wrong chapter makes no venue changes",async()=>{
 test("failed arming never advances the ticket or reports it ready",async()=>{
   const f=setup({},"hang-once");await assert.rejects(f.run,/offline/);
   assert.equal(f.calls.length,2);assert.equal(f.visible.length,1);
+});
+
+test("one-click completion prepares before resuming exactly the authorized session",async()=>{
+  const f=setup();
+  f.client.taskResume=async id=>{assert.equal(f.calls.length,3);assert.equal(id,"my-session");return {ok:true,session_id:id};};
+  const result=await completePurchaseScenario(f.client,"my-session",s=>f.visible.push(s));
+  assert.equal(result.ok,true);
+  assert.match(f.visible.at(-1),/Resuming/);
+});
+test("one-click completion never answers a human question or repeats a completed purchase",async()=>{
+  for(const overrides of [{pending:{kind:"person"}},{last_order:"ord-existing"}]){
+    const f=setup(overrides);
+    f.client.taskResume=async()=>assert.fail("must not resume");
+    await assert.rejects(()=>completePurchaseScenario(f.client,"my-session",()=>{}));
+    assert.equal(f.calls.length,0);
+  }
+});
+test("a partial preparation failure does not resume",async()=>{
+  const f=setup({},"hang-once");f.client.taskResume=async()=>assert.fail("must not resume");
+  await assert.rejects(()=>completePurchaseScenario(f.client,"my-session",()=>{}),/offline/);
+});
+test("a changed task after preparation does not resume",async()=>{
+  const f=setup();const read=f.client.task;let reads=0;
+  f.client.task=async id=>({...await read(id),...(++reads>1?{pending:null,last_order:"ord-existing"}:{})});
+  f.client.taskResume=async()=>assert.fail("must not resume");
+  await assert.rejects(()=>completePurchaseScenario(f.client,"my-session",()=>{}),/changed/);
+});
+test("duplicate clicks while completing do not send a second resume",async()=>{
+  const f=setup();let release;
+  f.client.taskResume=()=>new Promise(resolve=>{release=()=>resolve({ok:true,session_id:"my-session"});});
+  const first=completePurchaseScenario(f.client,"my-session",()=>{});
+  await assert.rejects(()=>completePurchaseScenario(f.client,"my-session",()=>{}),/already/);
+  await new Promise(resolve=>setImmediate(resolve));
+  release();await first;
+  assert.equal(f.calls.length,3);
 });

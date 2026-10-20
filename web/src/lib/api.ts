@@ -215,6 +215,9 @@ export const api = {
     get<TaskSummary>(`/api/task${sessionId ? `?session_id=${q(sessionId)}` : ""}`),
   taskResume: (sessionId?: string) =>
     post<ResumeResult>("/api/task/resume", sessionId ? { session_id: sessionId } : {}),
+  purchaseSession: (task: TaskSummary) =>
+    get<unknown>(`/svc/agent/apps/${q(task.app_name)}/users/${q(task.user_id)}/sessions/${q(task.session_id!)}`),
+  purchaseVenue: () => get<unknown>("/svc/venue/admin/state"),
   venueState: () => get<{ up: boolean; queue: number; orders: number }>("/api/venue/state"),
   venue: (action: string, body?: Record<string, unknown>) =>
     post<{ ok: boolean; error?: string }>(`/api/venue/${q(action)}`, body ?? {}),

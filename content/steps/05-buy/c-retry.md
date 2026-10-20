@@ -1,21 +1,25 @@
-The simulated venue writes the order, then returns HTTP 503 instead of a
-success response. Was the order created? It cannot tell.
-"Submitted successfully" and "received a success response" are two different
-facts, and a network only promises the second when it promises anything.
+You asked for two tickets for you and Sam. The venue saves that order,
+but sends back an error: **503**. The agent's purchase tool tries again.
+Will you end up with four tickets?
 
-So something retries. If the retry is a second purchase, the person wakes up
-to two pairs of tickets. In 5b you armed exactly this failure before waking
-the run; the order went through once. This section is why.
+**This section teaches safe retries.** An error response does not prove
+that nothing was bought. Sending the **same purchase key** again lets the
+venue find and return the order it already saved. The result should be
+**two requests, one order, two seats**.
+
+The live card below tells you whether your purchase has finished and reads
+the evidence directly from your session. You do not need to hunt through
+ADK's JSON before knowing what happened.
 
 :::exercise id="run"
 :::figure src="/docs-img/07-01-solution2.png" caption="The venue charges the order and then the reply fails. The retry carries the same idempotency key, so the venue answers with the order it already has: last_order is set once."
-:::
-:::figure src="/docs-img/09-01-hitl5.png" example="true" caption="Earlier screenshot of a successful order. In this experiment A is sold out: check your live order for 2 seats in C, $190 total."
 :::
 :::
 
 :::task
 :::
+
+<div id="purchase-key-code" style="scroll-margin-top: 160px"></div>
 
 ## Key code: one key, one order
 
@@ -38,8 +42,8 @@ A random UUID here would be a key in name only: every attempt would look new.
 The tool retries **once**, itself, and only on a server-side failure. A 409
 (sold out, still in the queue) is an answer, not a failure; retrying it would
 ask the same question twice. The response the model finally sees carries
-`attempts` and `idempotency_key`, so the Events tab tells you what happened
-without reading a log.
+`attempts` and `idempotency_key`. The live card above extracts these exact
+fields; ADK Events keeps the full response for you to inspect.
 
 :::optional title="Going deeper: the venue’s half of idempotency" minutes=8 needs="chapter 5 loaded"
 :::file path="venue/app.py" label="Show venue/app.py — /purchase and /admin/hang-once"

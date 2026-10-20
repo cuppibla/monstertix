@@ -7,6 +7,11 @@ finished run; there is nothing new to submit.
 
 ## 1 · This is the workflow you just ran
 
+:::figure src="/docs-img/04-workflow-pause.png" caption="Follow the top row from left to right. If the ticket is not at the front, check_front returns RequestInput and the task pauses. Nothing is purchased in chapter 4."
+:::
+
+<a href="/docs-img/04-workflow-pause.png" target="_blank" rel="noreferrer">Open the workflow diagram at full size ↗</a>
+
 In `agent/concert/nightly.py`, these edges define the order:
 
 ```python
@@ -63,6 +68,11 @@ ADK saves it, and the current execution stops. It appears in Events as
 `⚡ adk_request_input`. There is no sleeping loop inside this function.
 
 ## 3 · Resume answers that saved pause
+
+:::figure src="/docs-img/04-resume-signal.png" caption="Resume sends checked: true to the same saved pause. check_front runs again and asks the venue: still waiting means pause again; ready means continue to ready_to_buy."
+:::
+
+<a href="/docs-img/04-resume-signal.png" target="_blank" rel="noreferrer">Open the Resume diagram at full size ↗</a>
 
 When you clicked **Resume current task**, the workbench sent a request to
 ADK's `POST /run`, using the **same session ID**. This is the relevant payload

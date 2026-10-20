@@ -29,14 +29,14 @@ export function TaskView({ task, slug, color, prepared, compact = false }: {
     return (
       <div className="mt-3">
         <p className="text-[0.78rem]" style={{ color: "var(--fg-faint)" }}>
-          {task.lessonAnchor ? "Read the workflow code, then return here to match it to the Events."
+          {task.lessonAnchor ? "Read the code, then return here to match it to the Events."
             : t("The code viewer for this card is in the reading, behind the drawer.")}
         </p>
         <button type="button" className="btn mt-2" onClick={() => {
           setDrawerOpen(false);
           requestAnimationFrame(() => document.getElementById(task.lessonAnchor ?? `task-${slug}-${task.id}`)
             ?.scrollIntoView({block: "start"}));
-        }}>{task.lessonAnchor ? "Read workflow code and explanation →" : "Show code viewer →"}</button>
+        }}>{task.lessonAnchor ? "Read code and explanation →" : "Show code viewer →"}</button>
       </div>
     );
   }

@@ -189,9 +189,10 @@ parts:
   body: c-retry.md
   exercises:
     run:
-      title: Explain the retry in the same purchase
-      needs: Finish 5b first. The live task must show an order. If it does not, follow the status card above; there is no purchase response to inspect yet.
-      intro: After 5b completes, inspect that same purchase here. The venue saved the order, then returned a 503 error. The tool retried once with the same key. This page explains the receipt; it does not run another purchase.
+      title: Two requests. Did we buy twice?
+      intro: 'The status card above checks your own task. **5b purchase complete** means an order is saved.
+        If you are still in the queue with your budget confirmed, click **Complete 5b for this task**.
+        If the agent is asking for your budget, answer that question in ADK first.'
       apps:
       - agent
       - venue
@@ -199,6 +200,7 @@ parts:
       - kind: files
         id: files
         open: agent/concert/tools.py
+        lessonAnchor: purchase-key-code
         stage: 5
         compare: 4
         only:
@@ -212,15 +214,11 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: 'Click **Open this task in ADK**. In **Events**, scroll to the completed purchase and click the last **✓ purchase**. In the **Info** panel, click **{}** (JSON) in its left toolbar. If you see a graph, switch to **{}**. Read `content → parts → 0 → functionResponse → response`.'
+        - text: 'Read **Verified: two requests, one order** in the live card above. `attempts: 2` counts HTTP requests; `duplicate: true` says the retry returned the existing order. **Venue orders: 1** is the result we wanted.'
+        - text: 'Click **Show the actual purchase response (JSON)** in that card to see the real fields, including the order ID and `idempotency_key`. These come from your run, not an example.'
+        - text: 'To compare with ADK, open this task below and click the **✓ purchase** event number shown on the live card. In **Info → {}**, expand `content → parts → 0 → functionResponse → response`. It is the same response.'
           look: agent
           inspectTask: true
-        - text: 'Inside `response`: `attempts: 2` means two HTTP attempts; `duplicate: true` means the retry returned the existing order. Find `idempotency_key` and the `ord_…` ID. These are tool-response fields, not chat labels. If no order exists, finish 5b first.'
-        - text: 'Then the venue''s activity feed: `COMMITTED, then failed the response (hang-once)`, and right
-            after it `duplicate suppressed — returned ord_…`, the same id. **Tickets bought** says 1.
-
-            '
-          look: venue
   expect:
   - 'The `purchase` response: `attempts: 2`, `duplicate: true`, `idempotency_key: …`, and the order id the
     venue shows.'
