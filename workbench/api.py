@@ -14,9 +14,56 @@ from typing import Any
 from fastapi import APIRouter, Body, HTTPException
 
 from workbench import config
-from workbench.services import checks, content, jobs, procs, prompts, stage, task, workspace
+from workbench.services import checks, cloud_demo, content, jobs, learning, procs, prompts, stage, task, workspace
 
 router = APIRouter(prefix="/api")
+
+@router.get("/cloud-demo")
+async def cloud_demo_status() -> dict:
+    try:
+        return await asyncio.to_thread(cloud_demo.status)
+    except learning.LearningError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/cloud-demo/{action}")
+async def cloud_demo_action(action: str, payload: dict = Body(default={})) -> dict:
+    try:
+        return await asyncio.to_thread(cloud_demo.act, action, payload)
+    except learning.LearningError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/learning/progress")
+def learning_progress() -> dict:
+    try:
+        return learning.progress()
+    except learning.LearningError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/learning/{slug}")
+async def learning_status(slug: str) -> dict:
+    try:
+        return await asyncio.to_thread(learning.status, slug)
+    except learning.LearningError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/learning/{slug}/records")
+async def learning_records(slug: str) -> dict:
+    try:
+        return await asyncio.to_thread(learning.records, slug)
+    except learning.LearningError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/learning/{slug}/{action}")
+async def learning_action(slug: str, action: str, payload: dict = Body(default={})) -> dict:
+    try:
+        return await asyncio.to_thread(learning.act, slug, action, payload)
+    except learning.LearningError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 # ── the course ───────────────────────────────────────────────────────────────

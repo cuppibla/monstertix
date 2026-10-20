@@ -35,8 +35,8 @@ from workbench import config
 
 SEEDED = "two-days-ago"
 APP_NAME = "concert"
-ADK_WEB = "http://127.0.0.1:8000"
-MONSTERTIX = "http://127.0.0.1:8090"
+ADK_WEB = f"http://127.0.0.1:{config.AGENT_PORT}"
+MONSTERTIX = f"http://127.0.0.1:{config.TRIGGER_PORT}"
 
 # Interrupt ids the course's workflow uses (concert/nightly.py).
 QUEUE_PREFIX = "queue:"
@@ -282,7 +282,7 @@ def resume(session_id: str | None = None) -> dict[str, Any]:
     if pending is None:
         return {"ok": False, "reason": "nothing is paused", "session_id": session["id"]}
     if pending["kind"] == "person":
-        return {"ok": False, "reason": "waiting for you — answer in the chat",
+        return {"ok": False, "reason": "waiting for you — answer the pending question, not a new chat message",
                 "session_id": session["id"], "pending": pending}
     if pending["kind"] != "queue":
         return {"ok": False, "reason": f"paused on {pending['id']}, which is not a queue wait",

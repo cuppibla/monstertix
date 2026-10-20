@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from workbench import config
 from workbench.api import router
-from workbench.services import procs, proxy
+from workbench.services import learning, procs, proxy
 
 
 @asynccontextmanager
@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI):
     # (VENUE_URL in .env) needs nothing started here.
     asyncio.get_running_loop().run_in_executor(None, procs.start, "venue")
     yield
+    learning.shutdown()
     # Ctrl-C on the workbench stops everything it started, so no agent is
     # left holding sessions.db or a port.
     procs.stop_all()

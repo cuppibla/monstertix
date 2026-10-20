@@ -490,14 +490,21 @@ def set_clock(payload: dict = Body(...)):
 
 
 @app.post("/admin/advance-queue")
-def advance_queue():
-    """Send every waiting ticket straight to the front."""
+def advance_queue(payload: dict = Body(default={})):
+    """Advance one specified ticket; the standalone panel can still advance all."""
     # forced_at starts the hold clock. Without it, SKIP THE WAIT would hand you
     # a place that expired the moment you got it, because the hold would be
     # measured from when you joined rather than from when you arrived.
-    run("UPDATE tickets SET forced_ready=1, forced_at=? WHERE forced_ready=0",
-        (time.time(),))
-    log("admin", "queue advanced to the front")
+    ticket = payload.get("ticket")
+    if ticket:
+        if row("SELECT ticket FROM tickets WHERE ticket=?", (ticket,)) is None:
+            raise HTTPException(404, "no such queue ticket")
+        run("UPDATE tickets SET forced_ready=1, forced_at=? WHERE ticket=?",
+            (time.time(), ticket))
+    else:
+        run("UPDATE tickets SET forced_ready=1, forced_at=? WHERE forced_ready=0",
+            (time.time(),))
+    log("admin", f"queue advanced to the front: {ticket or 'all tickets'}")
     return {"ok": True}
 
 

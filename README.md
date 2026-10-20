@@ -1,65 +1,54 @@
 # MonsterTix — Long-Running Agents on Google Cloud
 
-A two-hour hands-on workshop on **long-running agents**, built with
-[ADK 2](https://adk.dev) and Google Cloud.
+A hands-on workshop on **long-running agents**, built with
+[ADK 2](https://adk.dev) and Google Cloud. The guided course targets **60–75
+minutes after setup**, with optional implementation reading and deployment.
+That timing is a teaching estimate, not a measured classroom result.
 
-One task runs through the whole course:
+> Get two tickets to The Midnight Signal in Amsterdam, for me and Sam.
+> Sam can only do weekends, and we avoid the upper bowl. Save the task,
+> wait in the queue, survive a restart, and buy inside the limit I confirm.
 
-> Get two tickets to The Midnight Signal in Amsterdam, for me and Sam. We can
-> only do weekends, and we will not sit in the upper bowl. The agent may stop
-> running while it waits in the queue; when it is woken it checks the venue
-> again and buys inside the limit I confirmed — "Two tickets, up to $250 each."
-> In the end, a cloud timer finishes it.
-
-Same two people, same city, same preferences in every chapter. What changes is
-how much of the task the agent can finish without anyone at the keyboard.
-
-**Students read [`docs/CODELAB.md`](docs/CODELAB.md)** and work in the
-workbench. Everything below is for whoever runs or maintains the workshop.
-
----
-
-## The four deep dives
-
-Every framework got better at what goes in the prompt. None got better at being
-awake. A chat assistant lives inside one turn; this task takes forty minutes
-against a system you do not control. The course teaches four things a
-long-running agent needs, and each one is a required reading inside the chapter
-that exercises it:
-
-| Deep dive | The question it answers | Where |
-|---|---|---|
-| **Memory** | Where is a fact kept, for how long, and how does it get into *this* run? | 3B, 3C |
-| **Resumption** | After the process dies, what exactly comes back? | 4C |
-| **Authority** | How is "they are comfortable around $200" different from "you may spend up to $250 tonight"? | 5A |
-| **Reliability** | Inventory moved, the response never came, the retry fired — how many orders are there? | 5B, 5C |
-
-Chapters 1 and 2 set the scene and prove that a prompt cannot start a run.
-Chapter 6 moves the same agent to Cloud Run and lets Cloud Scheduler wake it.
-
----
+**Start in the workbench:** after the [pre-work](docs/PRE-WORK.md), run
+`./workbench.sh` and open the printed URL. Each chapter has one page with the
+next action, real results, and expandable code and records. The original
+[detailed codelab](docs/CODELAB.md) remains available for self-study.
 
 ## The six chapters
 
-110 minutes of class, plus a 10-minute buffer. Installation, sign-in and the
-slow resource creation happen **before class** — see
-[`docs/PRE-WORK.md`](docs/PRE-WORK.md).
+| # | Core experiment | What proves it | Target time |
+|---|---|---|---|
+| 1 | Meet the ticket task; check the environment once | Model reply, agent and venue reachable | 3–5 min |
+| 2 | Ask once; let a one-shot timer call again | Timer source and another invocation in the same session | 8–10 min |
+| 3 | Read one trace; save an aisle preference; ask in one new session | Session A/B events beside the actual memory write and recall | 12–15 min |
+| 4 | Queue, kill, restart and resume the same task | Same session and ticket; `ready_to_buy`; zero orders | 12–15 min |
+| 5 | Confirm a limit; prepare the combined fault; resume once | `stale_plan`, two HTTP attempts, duplicate suppression, one matching order | 15–18 min |
+| 6 | Watch an instructor's existing cloud task resume through Scheduler | Cloud task, trigger logs and matching venue order | 8–10 min |
 
-| # | Chapter | Sections | Students can… | Minutes |
-|---|---|---|---|---|
-| 1 | Meet MonsterTix | 1A The mission · 1B Your workspace | say what the task is, and where to watch the queue, the stock and the orders | 5 |
-| 2 | Wake the Agent | 2A Prompt · 2B Caller | say who starts an invocation, and why no wording can | 10 |
-| 3 | Remember What Matters | 3A Session DB · 3B Memory Service · 3C Services & lifetimes | trace a fact from storage into the current run; read a compaction summary | 25 |
-| 4 | Pause, Restart, Resume | 4A Pause · 4B Kill & continue · 4C What resumed | kill the process mid-queue and prove the same ticket continues to *ready to buy* | 25 |
-| 5 | Buy Within Agreed Limits | 5A Authority · 5B Check the world again · 5C Retry once | confirm an authorization, survive a sell-out, retry a failed response and still hold one order | 30 |
-| 6 | Run It While You Sleep | 6A Move · 6B Cloud wake-up · 6C Explain & clean up | deploy, create a cloud task, let Scheduler resume it, tear it down | 15 |
-| | Buffer | questions, repairs, catching up | | 10 |
+The short route has **13 learning milestones**: 1 + 2 + 3 + 3 + 3 + one cloud
+demonstration. Preparation and the human's two budget answers are real actions,
+not extra lessons. Time ranges allow different teaching pacing.
 
-Every section has the same shape: **the question → your turn → what you should
-see → key code → checkpoint**. Optional material (prompt variants, triggering
-compaction live, the `LongRunningFunctionTool` alternative, conditional budgets,
-Cloud Trace, deep SQL) sits in a final *Reference & optional* section with time
-and prerequisite labels, and never blocks the main line.
+**Session DB and Memory Service remain core material.** The course also keeps
+the distinction between completed node records and interrupted nodes, human
+authorization, live guards, and idempotency. SQL, Artifact Service details,
+compaction and the LongRunningFunctionTool comparison expand in place. LRFT
+is read-only comparison; it is not a loadable replacement experiment.
+
+The six core URLs are `/step/meet`, `/step/wake`, `/step/remember`,
+`/step/resume`, `/step/buy`, `/step/cloud`. Old `/step/buy/c` bookmarks land on
+the corresponding core chapter. Original a/b/c exercises are at `/study/...`.
+A new chapter deliberately loads a fresh code stage and resets live sessions,
+seeded memory and venue state. The page explains this before preparation;
+completed learning receipts and raw evidence survive in `runs/`.
+
+Independent cloud deployment is an **optional 20–30 minute extension**, with
+cleanup required if you create resources. The core cloud page does not deploy;
+it can inspect an `AGENT_SERVICE_URL` and dispatch an existing Scheduler job.
+A cloud task must have its own authorization. Local sessions are not migrated.
+
+See [the guided-course implementation notes](docs/SIMPLIFIED-LAB.md) for the
+state contract, boundaries, recovery and instructor walkthrough.
 
 ---
 
@@ -142,7 +131,7 @@ authorization.
 | **:8000** | `adk web` — the development UI. State, Events, Artifacts, the graph. Not something you ship |
 | **:8080** | the venue, when run locally. Deployed, it is `$VENUE_URL`; the panel is at `/panel` |
 | **:8090** | `monstertix/server.py` — the page at `/`, `POST /wake`, `POST /trigger/wake`, `GET /task` |
-| **:4800** | the workbench: every section as a page, the processes as switches, the current task card |
+| **:4800** | the workbench: one page per chapter, task controls, live venue and optional ADK drawer |
 
 Tests use **:8099** with their own venue database, so a test run never resets
 the venue you are teaching from.
@@ -225,14 +214,15 @@ the scheduler finish that one.
 ```
 
 One folder per chapter, mirroring `solutions/`. Tests that need a model are
-skipped unless `--live`. Currently **62 passing, 7 skipped** offline. See
+skipped unless `--live`. The suite includes the original chapter checks and guided-course integrity tests. See
 [`tests/README.md`](tests/README.md) for what each chapter asserts.
 
 ---
 
 ## For instructors
 
-- **[`docs/INSTRUCTOR.md`](docs/INSTRUCTOR.md)** — the 110 + 10 minute plan,
+- **[`docs/SIMPLIFIED-LAB.md`](docs/SIMPLIFIED-LAB.md)** — the current guided route and validation commands.
+- **[`docs/INSTRUCTOR.md`](docs/INSTRUCTOR.md)** — the original extended 110 + 10 minute plan,
   model answers to every checkpoint, what breaks and how to tell an expected
   outcome from an environment fault, what to cut, the clean-up order.
 - **[`docs/DRYRUN.md`](docs/DRYRUN.md)** — rehearse every section locally and

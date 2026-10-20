@@ -34,7 +34,8 @@ export function AppFrame({ id, version = 0, onReload }: {
   /** Called when the process came back and the frame reloaded itself. */
   onReload?: () => void;
 }) {
-  const { service } = useBench();
+  const { service, guided } = useBench();
+  const boundSession = guided?.sessionId;
   const app = APPS[id];
   const svc = service(app.service);
   const up = isUp(svc);
@@ -48,6 +49,14 @@ export function AppFrame({ id, version = 0, onReload }: {
   // starts from wherever the last one had got to.
   const [src, setSrc] = useState(() => frameHref(id));
   useEffect(() => setSrc(frameHref(id)), [id, version, generation]);
+
+  useEffect(() => {
+    if (id === "agent" && boundSession) {
+      const target = `${APPS.agent.path}&session=${encodeURIComponent(boundSession)}`;
+      where.agent = target;
+      setSrc(target);
+    }
+  }, [id, boundSession]);
 
   // Remember where the frame had got to (the dev UI keeps its session in the URL).
   useEffect(() => {
@@ -71,7 +80,10 @@ export function AppFrame({ id, version = 0, onReload }: {
         setGeneration((n) => n + 1);
         onReload?.();
       };
-      if (id === "agent") {
+      if (id === "agent" && boundSession) {
+        where.agent = `${APPS.agent.path}&session=${encodeURIComponent(boundSession)}`;
+        reload();
+      } else if (id === "agent" && !guided) {
         fetch("/svc/agent/apps/concert/users/user/sessions")
           .then((r) => r.json())
           .then((sessions: { id: string; lastUpdateTime?: number }[]) => {
@@ -85,7 +97,7 @@ export function AppFrame({ id, version = 0, onReload }: {
       }
     }
     wasUp.current = up;
-  }, [up, id, onReload]);
+  }, [up, id, onReload, boundSession, guided]);
 
   if (!up) {
     return (

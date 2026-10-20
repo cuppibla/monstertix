@@ -1,5 +1,9 @@
 # Dry run
 
+> **Detailed route.** The default workbench now uses six guided pages. See
+> [SIMPLIFIED-LAB.md](SIMPLIFIED-LAB.md) for the short course. These original
+> exercises remain available under `/study/...` for deeper study.
+
 Rehearse every section before anyone else sees it. The question is never "does
 it install". It is: **does each section produce the evidence the codelab
 promises, in front of a live model, without you nudging it?** Every nudge is a

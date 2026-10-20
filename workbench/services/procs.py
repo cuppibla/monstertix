@@ -46,7 +46,7 @@ def _agent_argv() -> list[str]:
     # Both service URIs, always: every chapter's sessions live in the one
     # sessions.db at the root, which is what the checks, the task summary and
     # MonsterTix read, and every restart uses the same flags.
-    argv = ["adk", "web", "agent", "--port", "8000", "--allow_origins", "*",
+    argv = ["adk", "web", "agent", "--port", str(config.AGENT_PORT), "--allow_origins", "*",
             f"--session_service_uri=sqlite+aiosqlite:///{config.ROOT}/sessions.db",
             f"--artifact_service_uri=file://{config.ROOT}/artifacts"]
     # The dev UI is framed through the workbench at /svc/agent/, and this is
@@ -70,11 +70,11 @@ def _clock_argv() -> list[str]:
 
 
 SERVICES: dict[str, Service] = {
-    "venue": Service("venue", "Venue", 8080, "/health", lambda: _python("-m", "venue"),
+    "venue": Service("venue", "Venue", config.VENUE_PORT, "/health", lambda: _python("-m", "venue"),
                      note="the ticket seller"),
-    "agent": Service("agent", "Agent · adk web", 8000, "/list-apps", _agent_argv,
+    "agent": Service("agent", "Agent · adk web", config.AGENT_PORT, "/list-apps", _agent_argv,
                      note="the ADK web UI"),
-    "monstertix": Service("monstertix", "MonsterTix", 8090, "/health",
+    "monstertix": Service("monstertix", "MonsterTix", config.TRIGGER_PORT, "/health",
                           lambda: _python("-m", "monstertix.server"),
                           note="your own server and page"),
     "clock": Service("clock", "Clock", None, None, _clock_argv, framable=False,
@@ -202,7 +202,7 @@ def _start(name: str) -> dict[str, Any]:
     log.flush()
     env = {**config.workshop_env(), **service.extra_env()}
     if name == "venue":
-        env["VENUE_URL"] = "http://127.0.0.1:8080"
+        env["VENUE_URL"] = origin("venue")
     # No terminal on stdin: a child that would ask a question (adk's
     # telemetry prompt on a tty) must not sit waiting for an answer nobody can give.
     child = subprocess.Popen(argv, cwd=config.ROOT, stdin=subprocess.DEVNULL, stdout=log,

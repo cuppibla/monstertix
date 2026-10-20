@@ -12,7 +12,11 @@ export type WorldTab = Exclude<PaneTab, "agent">;
 /** The section on screen: its slug and its "Your turn" cards, in order. */
 export type Current = { slug: string; exercises: { id: string; exercise: Exercise }[] };
 
+export type GuidedContext = {slug: string; sessionId: string | null; status: string; next: string; ticket: string | null; position: number | null; invocations: number; orders: number | null};
+
 type Bench = {
+  guided: GuidedContext | null;
+  setGuided: (current: GuidedContext | null) => void;
   services: Service[];
   stage: Stage | null;
   refresh: () => Promise<void>;
@@ -60,6 +64,7 @@ export function BenchProvider({ children }: { children: ReactNode }) {
   const [railOpen, setRailOpenState] = useState(() => stored("monstertix.rail", "open") === "open");
   const [railTab, setRailTab] = useState<WorldTab>("venue");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [guided, setGuided] = useState<GuidedContext | null>(null);
   const [current, setCurrent] = useState<Current | null>(null);
   const [epoch, setEpoch] = useState(0);
   const inFlight = useRef(false);
@@ -101,6 +106,8 @@ export function BenchProvider({ children }: { children: ReactNode }) {
   }, [setRailOpen]);
 
   const value: Bench = {
+    guided,
+    setGuided,
     services,
     stage,
     refresh,

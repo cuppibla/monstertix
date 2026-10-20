@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 import { api, type CoursePayload, type StepCard } from "../lib/api";
 import { isUp, useBench } from "../lib/bench";
@@ -71,6 +71,12 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
   lang: string;
   onLang: (lang: string) => void;
 }) {
+  const [earned, setEarned] = useState<Record<string, unknown[]>>({});
+  useEffect(() => {
+    const read = () => fetch("/api/learning/progress").then(r=>r.json()).then(r=>setEarned(r.chapters ?? {})).catch(()=>{});
+    read(); const timer=setInterval(read,5000); return ()=>clearInterval(timer);
+  }, []);
+  const study = useLocation().pathname.startsWith("/study/");
   const header = useRef<HTMLElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const activeIndex = steps.findIndex((s) => s.slug === activeSlug);
@@ -81,7 +87,7 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
   const appendix = steps.filter((s) => s.appendix);
   const activeChapter = chapters.findIndex((s) => s.slug === activeSlug);
   const named = (active?.parts ?? []).filter((p) => p.id);
-  const parts = named.length > 1 ? named : [];
+  const parts = (study || active?.appendix) && named.length > 1 ? named : [];
 
   // The columns below sit under the header; they need its height.
   useEffect(() => {
@@ -140,9 +146,9 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
                         style={{ background: isActive ? accent : "transparent",
                                  border: isActive ? "none" : "1px solid var(--hairline-strong)",
                                  color: isActive ? "var(--stage)" : "inherit" }}>
-                    {index + 1}
+                    {earned[step.slug]?.length ? "✓" : index + 1}
                   </span>
-                  {isActive && <span className="pr-1 font-semibold">{step.title}</span>}
+                  <span className={isActive?"pr-1 font-semibold":"pr-1"}>{({meet:"Meet",wake:"Wake",remember:"Memory",resume:"Resume",buy:"Buy",cloud:"Cloud"} as Record<string,string>)[step.slug]??step.title}</span>
                 </NavLink>
                 {index < chapters.length - 1 && <span className="px-0.5 text-[10px]" style={{ color: "var(--hairline-strong)" }}>›</span>}
               </div>
@@ -180,7 +186,7 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
               const isActive = part.id === activePart;
               const accent = `var(--${active.color})`;
               return (
-                <NavLink key={part.id} to={`/step/${activeSlug}/${part.id}`}
+                <NavLink key={part.id} to={`/${study ? "study" : "step"}/${activeSlug}/${part.id}`}
                          className="flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1 text-xs whitespace-nowrap"
                          style={{ borderColor: isActive ? accent : "var(--hairline)",
                                   background: isActive ? `color-mix(in srgb, ${accent} 12%, transparent)` : "transparent",

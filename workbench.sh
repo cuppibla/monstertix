@@ -18,7 +18,21 @@ PY=./.venv/bin/python
 mkdir -p runs
 
 running_pid() {
-  pgrep -f -- "-m workbench$" 2>/dev/null | head -1 || true
+  # Two checkouts may be open at once. Never stop another checkout's server.
+  local candidate directory
+  for candidate in $(pgrep -f -- "-m workbench$" 2>/dev/null || true); do
+    if [ -d "/proc/$candidate/cwd" ]; then
+      directory="$(readlink "/proc/$candidate/cwd" 2>/dev/null || true)"
+    elif command -v lsof >/dev/null 2>&1; then
+      directory="$(lsof -a -p "$candidate" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+    else
+      continue
+    fi
+    if [ "$directory" = "$(pwd -P)" ]; then
+      echo "$candidate"
+      return
+    fi
+  done
 }
 
 stop() {
@@ -58,6 +72,10 @@ start() {
   if [ -n "$(running_pid)" ]; then
     echo "→ workbench is already running"
   else
+    if curl -fsS "http://127.0.0.1:$PORT/api/env" >/dev/null 2>&1; then
+      echo "✗ port $PORT is already serving another checkout; choose WORKBENCH_PORT"
+      exit 1
+    fi
     build
     nohup "$PY" -m workbench > runs/workbench.log 2>&1 &
     for _ in $(seq 1 40); do

@@ -61,3 +61,6 @@ AGENTS.md
 # --- the workbench ----------------------------------------------------------
 # Process logs, pids and job output. Rebuilt on every run.
 runs/
+
+# A shared local Python environment may be a symlink in a worktree.
+.venv

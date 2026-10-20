@@ -16,7 +16,7 @@ import { t } from "../i18n";
 const TABS: WorldTab[] = ["venue", "monstertix"];
 
 export function WorldRail() {
-  const { service, railOpen, setRailOpen, railTab, setRailTab } = useBench();
+  const { service, railOpen, setRailOpen, railTab, setRailTab, guided } = useBench();
   const [opened, setOpened] = useState<Set<WorldTab>>(() => new Set([railTab]));
   const [versions, setVersions] = useState<Record<string, number>>({});
   const [logOpen, setLogOpen] = useState(false);
@@ -67,6 +67,16 @@ export function WorldRail() {
         </div>
       </div>
 
+      {guided && <div className="guide-world-task">
+        <b>{guided.slug === "cloud" ? "Local venue · cloud demo uses its own venue" : "This chapter's task"}</b>
+        <span>{guided.status}</span>
+        {guided.sessionId && <code>{guided.sessionId}</code>}
+        {guided.sessionId && <div className="guide-world-metrics"><div><strong>{guided.invocations}</strong><span>invocations</span></div>
+          <div><strong>{guided.orders??"—"}</strong><span>venue orders</span></div></div>}
+        {guided.position!==null&&<span>Queue position · {guided.position.toLocaleString()} people ahead, not seconds</span>}
+        {guided.ticket && <span>Queue ticket · <code>{guided.ticket}</code></span>}
+        {guided.orders !== null && <span>{guided.orders} orders in the local venue</span>}
+      </div>}
       {/* The venue starts with the workbench and is always on; MonsterTix has a switch. */}
       {railTab === "monstertix" && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-1.5" style={{ borderColor: "var(--hairline)" }}>

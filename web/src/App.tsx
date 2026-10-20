@@ -9,6 +9,8 @@ import { AgentDrawer } from "./components/AgentDrawer";
 import { Content } from "./components/Content";
 import { WorldRail } from "./components/WorldRail";
 import { TopNav } from "./components/TopNav";
+import { Guided } from "./components/Guided";
+import { guides } from "./lib/guide";
 import { Watch } from "./components/Watch";
 
 /* The bench: the world on the left, the step in the middle, the ADK web UI in
@@ -26,7 +28,7 @@ function neighbours(course: CoursePayload, slug: string, partId: string) {
   return { flat, index, previous: index > 0 ? flat[index - 1] : null, next: index >= 0 && index < flat.length - 1 ? flat[index + 1] : null };
 }
 
-const href = (e: { slug: string; part: string }) => (e.part ? `/step/${e.slug}/${e.part}` : `/step/${e.slug}`);
+const href = (e: { slug: string; part: string }) => (e.part ? `/study/${e.slug}/${e.part}` : `/study/${e.slug}`);
 
 /* Links to the old nine steps still arrive (bookmarks, the codelab's text).
    Each lands on the section of the new course that teaches the same thing. */
@@ -59,10 +61,11 @@ function worldTabFor(part: StepFull["parts"][number]): WorldTab | null {
   return (seen.find((tab) => tab !== "agent") as WorldTab | undefined) ?? null;
 }
 
-function StepPage({ course, lang }: { course: CoursePayload; lang: string }) {
+function StudyPage({ course, lang }: { course: CoursePayload; lang: string }) {
   const { slug = "", part: partParam } = useParams();
   const navigate = useNavigate();
-  const { setRailTab, setCurrent } = useBench();
+  const { setRailTab, setCurrent, setGuided } = useBench();
+  useEffect(() => setGuided(null), [setGuided]);
   const [step, setStep] = useState<StepFull | null>(null);
   const known = course.steps.some((s) => s.slug === slug);
   const moved = !known && MOVED[slug] && course.steps.some((s) => s.slug === MOVED[slug].split("/")[0]) ? MOVED[slug] : "";
@@ -166,6 +169,12 @@ function StepPage({ course, lang }: { course: CoursePayload; lang: string }) {
   );
 }
 
+function ChapterPage({course, lang}: {course: CoursePayload; lang: string}) {
+  const {slug = "", part} = useParams();
+  if (guides[slug]) return part ? <Navigate to={`/step/${slug}`} replace /> : <Guided />;
+  return <StudyPage course={course} lang={lang} />;
+}
+
 /* The frame around every step: the top bar, the world column, the drawer. */
 function Shell({ course, lang, onLang }: { course: CoursePayload; lang: string; onLang: (l: string) => void }) {
   const { slug = "", part = "" } = useParams();
@@ -233,7 +242,8 @@ export default function App() {
 
   const first = course.steps[0]?.slug ?? "";
   const effective = course.languages.includes(lang) ? lang : "en";
-  const page = <StepPage course={course} lang={effective} />;
+  const page = <ChapterPage course={course} lang={effective} />;
+  const study = <StudyPage course={course} lang={effective} />;
   return (
     <LangProvider lang={effective}>
       <BenchProvider>
@@ -245,6 +255,8 @@ export default function App() {
               <Route element={<Shell course={course} lang={effective} onLang={changeLang} />}>
                 <Route path="/step/:slug" element={page} />
                 <Route path="/step/:slug/:part" element={page} />
+                <Route path="/study/:slug" element={study} />
+                <Route path="/study/:slug/:part" element={study} />
               </Route>
               <Route path="*" element={<Navigate to={`/step/${first}`} replace />} />
             </Routes>

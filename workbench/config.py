@@ -14,6 +14,9 @@ WEB_DIST = ROOT / "web" / "dist"
 RUNS = ROOT / "runs"
 
 PORT = int(os.environ.get("WORKBENCH_PORT", "4800"))
+AGENT_PORT = int(os.environ.get("AGENT_PORT", "8000"))
+VENUE_PORT = int(os.environ.get("VENUE_PORT", "8080"))
+TRIGGER_PORT = int(os.environ.get("TRIGGER_PORT", "8090"))
 DEFAULT_LANG = "en"
 
 RUNS.mkdir(exist_ok=True)
@@ -60,9 +63,9 @@ def workshop_env() -> dict[str, str]:
         project = Path.home() / "project_id.txt"
         if project.exists():
             env["GOOGLE_CLOUD_PROJECT"] = project.read_text().strip()
-    env["AGENT_URL"] = env.get("AGENT_URL") or "http://127.0.0.1:8000"
+    env["AGENT_URL"] = env.get("AGENT_URL") or f"http://127.0.0.1:{AGENT_PORT}"
     # No venue named means the one the workbench runs on :8080 (`. ./set_env.sh local`).
-    env["VENUE_URL"] = (env.get("VENUE_URL") or "http://127.0.0.1:8080").rstrip("/")
+    env["VENUE_URL"] = (env.get("VENUE_URL") or f"http://127.0.0.1:{VENUE_PORT}").rstrip("/")
     env["MEMORY_DIR"] = str(ROOT / "memory")
     env["MEMORY_USER"] = "userx"
     env["PYTHONUNBUFFERED"] = "1"

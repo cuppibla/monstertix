@@ -1,5 +1,9 @@
 # Instructor runbook
 
+> **Detailed route.** The default workbench now uses six guided pages. See
+> [SIMPLIFIED-LAB.md](SIMPLIFIED-LAB.md) for the short course. These original
+> exercises remain available under `/study/...` for deeper study.
+
 Everything you need that students do not. [`CODELAB.md`](CODELAB.md) is what
 they see; [`DRYRUN.md`](DRYRUN.md) is how you rehearse it;
 [`PRE-WORK.md`](PRE-WORK.md) is what they did before they arrived.

@@ -40,7 +40,7 @@ function shortId(id: string | null): string {
 function whyNot(task: TaskSummary | null): string {
   if (!task || !task.session_id) return t("No task yet: start one in the section before this one.");
   if (!task.pending) return t("Nothing is paused.");
-  if (task.pending.kind === "person") return t("Waiting for you: answer in the chat.");
+  if (task.pending.kind === "person") return t("Waiting for you: answer the pending event.");
   if (task.pending.kind !== "queue") return t("Paused on something that is not a queue wait.");
   return "";
 }
@@ -130,7 +130,7 @@ export function TaskCard() {
           )}
           {paused === "you" && (
             <p className="mt-1 max-w-xl text-[0.8rem]" style={{ color: "var(--fg-muted)" }}>
-              {t("The run stopped itself to ask you something. Answer in the chat; Resume cannot answer for you.")}
+              {t("The run stopped itself to ask you something. Answer the pending event in ADK; Resume cannot answer for you.")}
             </p>
           )}
         </div>

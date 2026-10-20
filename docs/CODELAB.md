@@ -1,5 +1,9 @@
 ---
 
+> **Detailed route.** The default workbench now uses six guided pages. See
+> [SIMPLIFIED-LAB.md](SIMPLIFIED-LAB.md) for the short course. These original
+> exercises remain available under `/study/...` for deeper study.
+
 id: monstertix
 summary: One task, six chapters. An agent that remembers, waits in a queue, survives being killed, buys inside a limit you confirmed, and finishes in the cloud while you sleep. ADK 2 on Google Cloud.
 categories: Cloud, AiAndMachineLearning

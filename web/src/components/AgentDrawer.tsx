@@ -29,7 +29,14 @@ function stored(key: string, fallback: boolean): boolean {
 
 /* The section's "Your turn" cards, in order, every task but the code viewer. */
 function Steps() {
-  const { current } = useBench();
+  const { current, guided } = useBench();
+  if (guided) return <div className="p-4 text-sm leading-relaxed">
+    <div className="kicker">Inspect this experiment</div>
+    <p className="mt-3 break-all"><code>{guided.sessionId ?? "Prepare a chapter first"}</code></p>
+    <p className="mt-3">{guided.status}</p>
+    <p className="mt-3">Use Events and State to follow the actual run. The main page keeps the next action and the result together.</p>
+    <p className="mt-3">Answer human questions on the chapter page. Starting a new chat message does not answer a suspended workflow node.</p>
+  </div>;
   const cards = (current?.exercises ?? []).filter(({ exercise }) => exercise.tasks.length > 0);
   if (!current || cards.length === 0) {
     return (
