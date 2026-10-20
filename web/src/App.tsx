@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useNavigate, useParams } from "react-router-dom";
+import { Navigate, Outlet, Route, BrowserRouter as Router, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 
-import { api, type CoursePayload, type PaneTab, type StepFull } from "./lib/api";
+import { api, type CoursePayload, type PaneTab, type PartFull, type StepFull } from "./lib/api";
 import { setStages } from "./lib/numbers";
 import { BenchProvider, useBench, type WorldTab } from "./lib/bench";
 import { LangProvider, saveLang, savedLang, t } from "./i18n";
@@ -9,8 +9,7 @@ import { AgentDrawer } from "./components/AgentDrawer";
 import { Content } from "./components/Content";
 import { WorldRail } from "./components/WorldRail";
 import { TopNav } from "./components/TopNav";
-import { Guided } from "./components/Guided";
-import { guides } from "./lib/guide";
+import { CloudDemo } from "./components/CloudDemo";
 import { Watch } from "./components/Watch";
 
 /* The bench: the world on the left, the step in the middle, the ADK web UI in
@@ -18,17 +17,19 @@ import { Watch } from "./components/Watch";
    MonsterTix page) and the drawer are mounted once, outside the step routes,
    so their frames survive moving between sections. */
 
-function neighbours(course: CoursePayload, slug: string, partId: string) {
+function neighbours(course: CoursePayload, slug: string, partId: string, fullCloud: boolean) {
   const flat: { slug: string; part: string; label: string }[] = [];
   for (const step of course.steps) {
+    if (step.slug === "cloud" && !fullCloud) {
+      flat.push({slug: step.slug, part: "", label: step.title});
+      continue;
+    }
     const parts = step.parts.length > 1 ? step.parts : [{ id: step.parts[0]?.id ?? "", label: "" }];
     for (const part of parts) flat.push({ slug: step.slug, part: part.id, label: part.label || step.title });
   }
   const index = flat.findIndex((e) => e.slug === slug && (e.part === partId || !e.part));
   return { flat, index, previous: index > 0 ? flat[index - 1] : null, next: index >= 0 && index < flat.length - 1 ? flat[index + 1] : null };
 }
-
-const href = (e: { slug: string; part: string }) => (e.part ? `/study/${e.slug}/${e.part}` : `/study/${e.slug}`);
 
 /* Links to the old nine steps still arrive (bookmarks, the codelab's text).
    Each lands on the section of the new course that teaches the same thing. */
@@ -61,9 +62,24 @@ function worldTabFor(part: StepFull["parts"][number]): WorldTab | null {
   return (seen.find((tab) => tab !== "agent") as WorldTab | undefined) ?? null;
 }
 
+function Observations({slug, part, color}: {slug: string; part: PartFull; color: string}) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Watch slug={slug} part={part.id} checks={[]} expect={part.expect} title="" color={color}/>
+    {!!part.checks.length&&<details className="my-6 rounded-2xl border p-4"
+      style={{borderColor:"var(--hairline)"}} onToggle={e=>setOpen(e.currentTarget.open)}>
+      <summary className="cursor-pointer text-sm">Troubleshooting · check the live experiment</summary>
+      {open&&<Watch slug={slug} part={part.id} checks={part.checks} expect={[]} title={part.checksTitle} color={color}/>}
+    </details>}
+  </>;
+}
+
 function StudyPage({ course, lang }: { course: CoursePayload; lang: string }) {
   const { slug = "", part: partParam } = useParams();
   const navigate = useNavigate();
+  const study = useLocation().pathname.startsWith("/study/");
+  const href = (e: {slug: string; part: string}) => !study && e.slug === "cloud"
+    ? "/step/cloud" : `/${study?"study":"step"}/${e.slug}${e.part?`/${e.part}`:""}`;
   const { setRailTab, setCurrent, setGuided } = useBench();
   useEffect(() => setGuided(null), [setGuided]);
   const [step, setStep] = useState<StepFull | null>(null);
@@ -72,14 +88,20 @@ function StudyPage({ course, lang }: { course: CoursePayload; lang: string }) {
 
   useEffect(() => {
     if (moved) return;
-    api.step(slug, lang).then(setStep).catch(() => setStep(null));
+    let active = true;
+    setStep(null);
+    api.step(slug, lang).then(value=>{if(active)setStep(value);}).catch(() => {if(active)setStep(null);});
+    return ()=>{active=false;};
+  }, [slug, lang, moved]);
+
+  useEffect(() => {
     window.scrollTo({ top: 0 });
-  }, [slug, partParam, lang, moved]);
+  }, [slug, partParam]);
 
   const part = step?.parts.find((p) => p.id === (partParam ?? "")) ?? step?.parts[0] ?? null;
   const partId = part?.id ?? "";
   const many = (step?.parts.length ?? 0) > 1;
-  const { previous, next, index, flat } = neighbours(course, slug, partId);
+  const { previous, next } = neighbours(course, slug, partId, study || slug === "cloud");
   const accent = `var(--${step?.color ?? "cyan"})`;
 
   useEffect(() => {
@@ -106,7 +128,7 @@ function StudyPage({ course, lang }: { course: CoursePayload; lang: string }) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (target && (/^(INPUT|TEXTAREA|SELECT|BUTTON|A|SUMMARY)$/.test(target.tagName)||target.isContentEditable)) return;
       if (event.key === "ArrowRight" && next) navigate(href(next));
       if (event.key === "ArrowLeft" && previous) navigate(href(previous));
     }
@@ -142,8 +164,8 @@ function StudyPage({ course, lang }: { course: CoursePayload; lang: string }) {
             )}
           </div>
 
-          <Content markdown={part.body} slug={step.slug} color={accent} exercises={part.exercises} stage={step.stage} />
-          <Watch slug={step.slug} part={part.id} checks={part.checks} expect={part.expect} title={part.checksTitle} color={accent} />
+          <Content key={`${slug}/${partId}`} markdown={part.body} slug={step.slug} color={accent} exercises={part.exercises} stage={step.stage} />
+          <Observations key={`watch-${slug}/${partId}`} slug={step.slug} part={part} color={accent}/>
 
           <nav className="mt-12 flex items-center justify-between gap-4 border-t pt-6 text-sm" style={{ borderColor: "var(--hairline)" }}>
             {previous ? (
@@ -152,7 +174,7 @@ function StudyPage({ course, lang }: { course: CoursePayload; lang: string }) {
                 <span className="truncate">← {previous.label}</span>
               </button>
             ) : <span />}
-            <span className="shrink-0 text-xs" style={{ color: "var(--fg-faint)" }}>{index + 1} / {flat.length}</span>
+            <span className="shrink-0 text-xs" style={{ color: "var(--fg-faint)" }}>{many ? `Part ${step.parts.indexOf(part) + 1} of ${step.parts.length}` : step.kicker}</span>
             {next ? (
               <button type="button" onClick={() => navigate(href(next))} className="min-w-0 text-right" style={{ color: accent }}>
                 <span className="kicker block" style={{ color: "var(--fg-faint)" }}>{t("next")}</span>
@@ -171,7 +193,7 @@ function StudyPage({ course, lang }: { course: CoursePayload; lang: string }) {
 
 function ChapterPage({course, lang}: {course: CoursePayload; lang: string}) {
   const {slug = "", part} = useParams();
-  if (guides[slug]) return part ? <Navigate to={`/step/${slug}`} replace /> : <Guided />;
+  if (slug === "cloud" && !part) return <CloudDemo />;
   return <StudyPage course={course} lang={lang} />;
 }
 

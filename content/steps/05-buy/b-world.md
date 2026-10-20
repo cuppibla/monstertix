@@ -1,5 +1,5 @@
 The run is parked. It holds a plan — section A, two seats — built from a seat
-map it read before the wait, and that snapshot is in `temp:seatmap`. Forty
+map it read before the wait. That choice is saved in `plan`; the temporary seat-map value does not survive the pause. Forty
 minutes in a real queue is long enough for section A to sell out. Nothing
 would be missing from the agent's context when it wakes; the wrong thing would
 be present. Who notices?
@@ -11,7 +11,7 @@ guard refuse. You also arm one more fault here, for the next section to read
 from the same run: the venue will commit the order and then lose the reply.
 
 :::exercise id="run"
-:::figure src="/docs-img/07-01-bug1.png" caption="SELL THE GOOD SEATS on the venue panel: section A goes to zero while the run is parked. The agent's saved seat map is now a lie, and nothing told it."
+:::figure src="/docs-img/07-01-bug1.png" caption="The scenario sells out section A while the run is parked. Its saved plan still asks for A; the guard will check the current inventory."
 :::
 :::figure src="/docs-img/07-01-bug2.png" caption="Without a guard: the purchase is attempted on the stale plan and the venue refuses it. The agent only finds out by failing."
 :::
@@ -79,7 +79,7 @@ never allowed to make.
 :::
 
 :::optional title="What happens without the guard" minutes=3 needs="nothing — reading only"
-Take `before_tool_callback` off the buyer and run the same experiment. The
+Read-only comparison: without `before_tool_callback`, the
 agent calls `purchase(A, 2)`, the request reaches the venue, and the venue
 answers:
 
@@ -110,8 +110,8 @@ the order lands.
 The plan was right when it was made and wrong by the time it was acted on;
 only the guard can know that, because only the guard reads the live seat map
 at the moment of purchase. A refusal with `stale_plan` is information the
-model did not have: it carries what the agent believed (400 seats) and what is
-true (0). The buyer reads that, re-reads the seat map, applies memory (never
+plan no longer reflects: it reports that the requested section has 0 seats. The
+`believed_available` field can vary if the model re-read the map before attempting the plan. The buyer reads that, re-reads the seat map, applies memory (never
 the upper bowl) and the authorization (at or under $250), and buys the one
 section that fits. One order, two seats, section C — bought from the world as
 it is, not as it was before the wait.

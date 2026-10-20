@@ -71,11 +71,6 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
   lang: string;
   onLang: (lang: string) => void;
 }) {
-  const [earned, setEarned] = useState<Record<string, unknown[]>>({});
-  useEffect(() => {
-    const read = () => fetch("/api/learning/progress").then(r=>r.json()).then(r=>setEarned(r.chapters ?? {})).catch(()=>{});
-    read(); const timer=setInterval(read,5000); return ()=>clearInterval(timer);
-  }, []);
   const study = useLocation().pathname.startsWith("/study/");
   const header = useRef<HTMLElement>(null);
   const rail = useRef<HTMLDivElement>(null);
@@ -87,7 +82,7 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
   const appendix = steps.filter((s) => s.appendix);
   const activeChapter = chapters.findIndex((s) => s.slug === activeSlug);
   const named = (active?.parts ?? []).filter((p) => p.id);
-  const parts = (study || active?.appendix) && named.length > 1 ? named : [];
+  const parts = (study || activeSlug !== "cloud" || activePart) && named.length > 1 ? named : [];
 
   // The columns below sit under the header; they need its height.
   useEffect(() => {
@@ -146,7 +141,7 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
                         style={{ background: isActive ? accent : "transparent",
                                  border: isActive ? "none" : "1px solid var(--hairline-strong)",
                                  color: isActive ? "var(--stage)" : "inherit" }}>
-                    {earned[step.slug]?.length ? "✓" : index + 1}
+                    {index + 1}
                   </span>
                   <span className={isActive?"pr-1 font-semibold":"pr-1"}>{({meet:"Meet",wake:"Wake",remember:"Memory",resume:"Resume",buy:"Buy",cloud:"Cloud"} as Record<string,string>)[step.slug]??step.title}</span>
                 </NavLink>
@@ -183,7 +178,7 @@ export function TopNav({ course, steps, activeSlug, activePart, languages, lang,
         <div className="quiet-scroll overflow-x-auto border-t" style={{ borderColor: "var(--hairline)" }}>
           <div className="flex items-center justify-center gap-2 px-5 py-1.5">
             {parts.map((part) => {
-              const isActive = part.id === activePart;
+              const isActive = part.id === (activePart || parts[0]?.id);
               const accent = `var(--${active.color})`;
               return (
                 <NavLink key={part.id} to={`/${study ? "study" : "step"}/${activeSlug}/${part.id}`}

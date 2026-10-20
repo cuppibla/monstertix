@@ -6,6 +6,7 @@ import { ServiceControls, ServiceLog } from "./ServiceControls";
 import { ResumeButton, useTask } from "./TaskCard";
 import { t } from "../i18n";
 import { Inline } from "./Inline";
+import { preparePurchaseScenario } from "../lib/purchaseScenario";
 
 /* "Your turn": the numbered things a student does in a step.
 
@@ -30,6 +31,7 @@ const ICON: Record<string, string> = {
   run: "$",
   clock: "⏰",
   resume: "▶",
+  scenario: "⚙",
   text: "•",
 };
 
@@ -42,6 +44,7 @@ function kindOf(item: TurnItem): string {
   if (item.run) return "run";
   if (item.clock) return "clock";
   if (item.resume) return "resume";
+  if (item.scenario) return "scenario";
   return "text";
 }
 
@@ -53,6 +56,44 @@ function ResumeItem() {
       <ResumeButton task={task} onDone={() => reload()} />
     </div>
   );
+}
+
+function PurchaseScenario() {
+  const {task, reload} = useTask();
+  const {stage} = useBench();
+  const [busy, setBusy] = useState(false);
+  const [steps, setSteps] = useState<string[]>([]);
+  const [prepared, setPrepared] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const ready = !!prepared && prepared === task?.session_id;
+  const blocked = stage?.step !== 5 ? "Load chapter 5 first."
+    : task?.last_order ? "The order is already placed. Inspect its Events."
+    : task?.pending?.kind !== "queue" ? "Start the task in ADK and answer its budget questions first."
+    : "";
+  useEffect(()=>{setSteps([]);setPrepared(null);setError("");}, [task?.session_id]);
+  async function prepare() {
+    if (busy || !task?.session_id) return;
+    setBusy(true);setSteps([]);setPrepared(null);setError("");
+    try {
+      await preparePurchaseScenario(api, task.session_id, label=>setSteps(value=>[...value,label]));
+      setPrepared(task.session_id);
+    } catch(e) {setError((e as Error).message);}
+    finally {setBusy(false);await reload();}
+  }
+  return <div className="mt-2">
+    <button className="btn btn--venue" disabled={busy||!!blocked||ready} onClick={prepare}>
+      {busy?"Preparing…":ready?"Scenario ready":"Prepare the changing-world scenario"}
+    </button>
+    {blocked&&<p className="mt-2 text-xs" style={{color:"var(--fg-muted)"}}>{blocked}</p>}
+    {steps.length>0&&<ul className="mt-2 text-xs" aria-live="polite">{steps.map(label=><li key={label}>✓ {label}</li>)}</ul>}
+    {error&&<p className="mt-2 text-sm" role="alert" style={{color:"var(--bad)"}}>{error}</p>}
+    {ready&&task?.pending?.kind==="queue"&&<div className="mt-3">
+      <p className="mb-2 text-sm">The agent is still paused. Resume once, then inspect the purchase responses in ADK.</p>
+      <ResumeButton task={task} onDone={()=>reload()}/></div>}
+    {ready&&!!task?.last_order&&<p className="mt-3 text-sm">
+      The order is complete. Inspect its purchase responses in ADK, then continue to Once.
+    </p>}
+  </div>;
 }
 
 function CopyLine({ text, tab, label }: { text: string; tab?: PaneTab; label: string }) {
@@ -237,6 +278,8 @@ function Item({ item, slug, task, index }: { item: TurnItem; slug: string; task:
     control = <RunItem slug={slug} task={task} index={index} command={item.run ?? ""} />;
   } else if (kind === "resume") {
     control = <ResumeItem />;
+  } else if (kind === "scenario") {
+    control = <PurchaseScenario />;
   } else if (kind === "clock") {
     const delay = item.clock?.in ?? 10;
     const every = item.clock?.every ?? 0;

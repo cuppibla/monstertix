@@ -28,26 +28,28 @@ Everything that mattered was already written before the kill, which is the point
 :::code path="agent/concert/agent.py" highlight="resumability_config=ResumabilityConfig\(is_resumable=True\)|^root_agent = nightly"
 :::
 
-### Three buttons that look alike
+### Resume, a new message, or a new session?
 
 | What you press | What it does to the session store |
 |---|---|
 | **Resume current task** | sends a `function_response` for `queue:wait` (`{"checked": true}`) into the **same session**. The parked invocation continues from `check_front` |
-| the chat box | starts a **new invocation** in that session. The graph enters from `START`: `pick_show` again, `queue_up` again, a **second ticket** at the back of a queue of 14,203 |
+| the chat box | starts a **new invocation** from `START`; it can choose a plan again. `queue_up` may reuse a still-valid ticket, but this does not continue the paused invocation |
 | **New Session** | a new row; the old task is untouched and still parked |
 | **Load chapter / RESET THE VENUE** | rebuilds `sessions.db` or empties the venue's queue; the old task is gone or its ticket is |
 
-The first two are the ones that get confused, and they are indistinguishable until you look at the venue panel and count tickets. The button on this page does what `monstertix/handlers.wake` and chapter 6's scheduler do: look up the newest session with an open interrupt, check that it is a queue wait, and answer that interrupt by id. It never types into the chat.
+The first two can look similar in the chat window. Check the interrupt response and node records to distinguish them. The button on this page does what `monstertix/handlers.wake` and chapter 6's scheduler do: look up the newest session with an open interrupt, check that it is a queue wait, and answer that interrupt by id. It never types into the chat.
 
 :::code path="agent/concert/nightly.py" highlight="create_request_input_response\(pending, \{\x22checked\x22: True\}\)|^def pending_interrupt"
 :::
 
-### Why the position was lower, and why that is the right answer
+### What the resumed node reads now
 
-The first Resume produced one log line, `[check_front] #… — not yet. Pausing.`, with a smaller number than before you killed anything. `check_front` is `rerun_on_resume=True`, so every wake-up asks the venue again. The venue's clock ran the whole time yours was dead, and the position is the one thing that changed while the process was gone. Re-reading it is not redundant; it is the reason to wake up at all. The second Resume, after SKIP THE WAIT, found `ready: true`, fell through, and `ready_to_buy` ran for the first and only time.
+You moved this ticket to the front before resuming. `check_front` has `rerun_on_resume=True`, so it asks the venue for the current position, finds `ready: true`, and lets `ready_to_buy` run. The earlier show choice and queue ticket come from completed records.
+
+If you resume before moving the ticket to the front, the same node simply reads a lower position and pauses again. That is useful in production, but you do not need an extra resume to prove the lesson here.
 
 :::warn
-**If you saw `[open]` and `[pick_show]` again, you typed in the chat box.** The venue now shows two tickets and the `resumed` check will say *it joined the queue again*. Load chapter 4 again and do 4A and 4B in one session, resuming only with the button.
+**If you see a fresh `[open]` and model call for `[pick_show]`, check whether you typed a new chat message.** That starts another invocation. A reused ticket alone does not prove that you resumed the old one. Load chapter 4 again and do 4A and 4B in one session, resuming only with the button.
 :::
 
 :::key

@@ -2,7 +2,7 @@ Two days ago somebody talked to this agent about Amsterdam, Sam, and the upper b
 
 ## What this chapter adds
 
-:::figure src="/docs-img/04-02-impl.png" caption="The tools this chapter adds, and where each one writes: note_companion into user:prefs, get_seatmap into a file and a temp: key, recall and remember into the memory file."
+:::figure src="/docs-img/04-02-impl.png" caption="Storage architecture: note_companion writes user:prefs; get_seatmap saves an artifact and a temporary summary; recall and remember use memory. The purchase tool shown here is added later, in chapter 5."
 :::
 
 | File | What changed |
@@ -39,8 +39,7 @@ is there before you type anything; `temp:seatmap` is not there even though
 :::figure src="/docs-img/04-01-newsession3.png" caption="The State tab of a fresh session: user:prefs is there, temp:seatmap is not. Your keys will differ a little from this earlier build; the shape is the same."
 :::
 
-Then the session dropdown. `two-days-ago` is a different row, with two keys
-yours does not have:
+For comparison, this screenshot shows `two-days-ago`, a different session row. Its task-specific keys stay with that row; you do not need to switch sessions to continue:
 
 :::figure src="/docs-img/04-02-oldsession1.png" caption="The session list: your new session and two-days-ago, side by side. Both are rows in the same sessions.db."
 :::
@@ -73,7 +72,7 @@ Without the first flag, ADK keeps sessions in memory and throws them away when t
 
 ### How a conversation becomes rows
 
-Look at your query's output again. Five tables, and two do the work:
+Here are the relevant tables. You can inspect them with the optional query below:
 
 ```
 sessions      app_name · user_id · id · state · create_time · update_time
@@ -115,5 +114,10 @@ Reset is the other thing. Loading a chapter deletes `sessions.db` and rebuilds i
 **You press New Session and ask: "How many of us are going?" What does the agent know, and from where?**
 :::answer
 It knows Sam cannot do weeknights, because `user:prefs` is read from `user_states` for app `concert` and user `user`, and every session of that user sees it. It does not know the party size. `party_size: 2` is in the `state` column of the `two-days-ago` row only, and a new session is a new row. It will either ask, or call `recall` and find "always books two seats" in the memory file, which is the next section.
+:::
+:::
+
+:::optional title="Inspect the rows with SQL" minutes=3 needs="your session from this chapter"
+:::exercise id="sql"
 :::
 :::

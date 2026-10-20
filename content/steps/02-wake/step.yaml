@@ -3,285 +3,282 @@ kicker: Chapter 2
 minutes: 15
 color: red
 stage: 2
-summary: >
-  The agent plans the Amsterdam trip well, and does nothing at all when nobody
-  types. No wording fixes that. A caller does: first a server that listens,
-  then a clock that calls it.
+summary: 'The agent plans the Amsterdam trip well, and does nothing at all when nobody types. No wording fixes
+  that. A caller does: first a server that listens, then a clock that calls it.
+
+  '
 parts:
-  - id: a
-    label: Prompt
-    headline: A prompt cannot start a run
-    body: a-prompt.md
-    exercises:
-      run:
-        title: One availability check, then tell it the plan
-        intro: >
-          Load this chapter's code, ask the agent one question in the ADK web
-          UI, and read the trace of that one run. Then swap in a wording that
-          tells it to keep checking, and watch what happens next: nothing.
-        apps: [agent, venue]
-        tasks:
-          - kind: prepare
-            id: prepare
-            step: 2
-            explain: >
-              Same agent as Chapter 1, plus a second instruction in
-              `agent/concert/agent.py` for the prompt lab below.
-          - kind: turn
-            id: turn
-            items:
-              - text: "In the **ADK web UI**, start a new session and type:"
-                say: Which Amsterdam shows still have seats for me and Sam?
-                in: agent
-              - text: >
-                  Read the run in the middle of the screen. Click the
-                  `⚡ recall` row, then `⚡ search_events`: the left panel shows
-                  the arguments the model chose. The `✓` under each is the JSON
-                  that came back. Then the sentence the model wrote from it.
-              - text: >
-                  Look at the venue panel's **What the agent is doing** feed.
-                  Every tool call you just saw in the trace is narrated there.
-                  Then it goes still.
-                look: venue
-          - kind: files
-            id: files
-            open: agent/concert/agent.py
-            stage: 2
-            compare: 1
-            only: [agent/concert/]
-            highlight: '^INSTRUCTION = \x22\x22\x22|^PROACTIVE_INSTRUCTION = \x22\x22\x22|^    instruction=INSTRUCTION,|^    tools=\['
-            highlightLabel: '`instruction=` is the text handed to the model when a message arrives. `PROACTIVE_INSTRUCTION` is the rewrite the lab swaps in; it changes the words and nothing about who sends a message.'
-      lab:
-        title: Tell it to keep checking, exactly as you would tell a person
-        intro: >
-          Pick a wording, or write your own. Each swap replaces the body of
-          `PROACTIVE_INSTRUCTION` in `agent/concert/agent.py`, points
-          `root_agent` at it, and restarts the agent. Then say the plan in a
-          **new session** and take your hands off the keyboard.
-        apps: [agent, venue]
-        tasks:
-          - kind: prompts
-            id: lab
-            file: agent/concert/agent.py
-            original: solutions/step2_wake/concert/agent.py
-            say: Keep an eye on the Amsterdam Saturday show for me and Sam, and tell me the moment anything changes.
-            prompts:
-              - label: Monitor and tell me
-                text: |
-                  You are a proactive ticket assistant.
+- id: a
+  label: Prompt
+  headline: A prompt cannot start a run
+  body: a-prompt.md
+  exercises:
+    run:
+      title: Ask once, then watch what stops
+      intro: 'Load chapter 2, send one request in ADK Web, then follow its tool calls. Leave the page open
+        after the reply: an instruction does not start another invocation.'
+      apps:
+      - agent
+      - venue
+      tasks:
+      - kind: prepare
+        id: prepare
+        step: 2
+        explain: 'Same agent as Chapter 1, plus a second instruction in `agent/concert/agent.py` for the prompt
+          lab below.
 
-                  Monitor the presale for The Midnight Signal. The moment it opens, check whether
-                  the Amsterdam Saturday show still has seats and tell me — do not wait to be
-                  asked, and do not wait for me to say anything. Act on your own.
+          '
+      - kind: turn
+        id: turn
+        items:
+        - text: 'In the **ADK web UI**, start a new session and type:'
+          say: Which Amsterdam shows still have seats for me and Sam? Keep checking and tell me if anything
+            changes.
+          in: agent
+        - text: 'Read the run in the middle of the screen. Click the `⚡ recall` row, then `⚡ search_events`:
+            the left panel shows the arguments the model chose. The `✓` under each is the JSON that came back.
+            Then the sentence the model wrote from it.
 
-                  Keep checking until you have an answer.
-              - label: Check every five minutes
-                text: |
-                  You are a ticket assistant.
+            '
+        - text: 'Look at the venue panel''s **What the agent is doing** feed. Every tool call you just saw
+            in the trace is narrated there. Then it goes still.
 
-                  Every five minutes, check whether the Amsterdam Saturday show of The Midnight
-                  Signal still has two seats together outside the upper bowl. Tell me as soon as
-                  anything changes. Do not stop checking.
-              - label: Wake yourself up
-                text: |
-                  You are a ticket assistant that never sleeps.
+            '
+          look: venue
+      - kind: files
+        id: files
+        open: agent/concert/agent.py
+        stage: 2
+        compare: 1
+        only:
+        - agent/concert/
+        highlight: ^INSTRUCTION = \x22\x22\x22|^PROACTIVE_INSTRUCTION = \x22\x22\x22|^    instruction=INSTRUCTION,|^    tools=\[
+        highlightLabel: The instruction and tools define what happens during a run. A caller is still needed
+          to start the next one.
+    lab:
+      title: Tell it to keep checking, exactly as you would tell a person
+      intro: 'Pick a wording, or write your own. Each swap replaces the body of `PROACTIVE_INSTRUCTION` in
+        `agent/concert/agent.py`, points `root_agent` at it, and restarts the agent. Then say the plan in a
+        **new session** and take your hands off the keyboard.
 
-                  After every reply, wake yourself up again and check the Amsterdam Saturday show
-                  of The Midnight Signal for two seats. Keep doing this until I tell you to stop.
-    expect:
-      - "One run in the Events list: `⚡ recall`, `⚡ search_events({\"city\": \"Amsterdam\"})`, each with a `✓` result, then a sentence naming Saturday 14 Nov at Ziggo Dome."
-      - "After the swap, the agent (in the ADK web UI drawer) goes *starting* then *running*; the agent agrees to the plan in a new session, and sounds like it means it."
-      - "A minute later: no new run in the Events list, the activity feed is still, and the lab's **Runs** count has not moved."
-    checks:
-      - id: searched
-        label: The agent answered your question by calling `search_events` against the venue
-        probe: python3 -m workbench.probe response search_events --contains ms-ams-01
-        hint: >
-          Ask about the Amsterdam shows in a **new session** of the ADK web UI.
-          If the agent is not *running* (the dot on the **ADK web UI** button), load Chapter 2 again and open its
-          log.
-      - id: swapped
-        label: You swapped a proactive wording in, and the agent restarted on it
-        probe: python3 -m workbench.probe prompts --at-least 1
-        hint: Pick a wording in the lab and press **Swap it in and restart the agent**.
-      - id: serving
-        label: The agent restarted on the new wording and is still serving
-        probe: python3 -m workbench.probe url http://127.0.0.1:8000/list-apps
-        contains: concert
-        hint: >
-          The agent did not come back after the swap. Open its log on the agent
-          card: a syntax error in the pasted wording shows on the last line.
-          Press **Put the original file back** and try again.
-      - id: asleep
-        label: Hands off for a minute, and nothing happened on its own
-        probe: python3 -m workbench.probe orders --count 0
-        expect: fail
-        hint: >
-          An order is on the panel. This chapter's agent has no purchase tool,
-          so that order is from an earlier stage: press **RESET THE VENUE**.
-        note: >
-          Expected. Every wording fails the same way: an instruction is read
-          when a message arrives, and no message arrived. Nothing ran, nothing
-          was checked, nothing was bought. The Events list and the activity
-          feed are the proof.
+        '
+      apps:
+      - agent
+      - venue
+      tasks:
+      - kind: prompts
+        id: lab
+        file: agent/concert/agent.py
+        original: solutions/step2_wake/concert/agent.py
+        say: Keep an eye on the Amsterdam Saturday show for me and Sam, and tell me the moment anything changes.
+        prompts:
+        - label: Monitor and tell me
+          text: 'You are a proactive ticket assistant.
 
-  - id: b
-    label: Server
-    headline: Something has to listen
-    body: b-server.md
-    exercises:
-      start:
-        title: Start your server, then call it yourself
-        intro: >
-          MonsterTix is your own server with a Runner behind `POST /wake`.
-          Start it, read its log, then say something on its page: this time
-          the caller is you, and the Runner is yours.
-        apps: [monstertix, venue]
-        tasks:
-          - kind: turn
-            id: turn
-            items:
-              - text: >
-                  Start MonsterTix. It appears on the left, on the
-                  **MonsterTix** tab of the world column. Press **log** there
-                  and read the last line: *nothing will happen until something
-                  calls it.*
-                service: monstertix
-                action: start
-              - text: >
-                  On the **MonsterTix page**, say this. The page posts it to
-                  `/wake`; the Runner behind that route does the rest.
-                say: Which Amsterdam show would you pick for me and Sam?
-                in: monstertix
-              - text: >
-                  Read MonsterTix's log: `woken · session …`, then `called
-                  recall`, `called search_events`, then `said` and the
-                  agent's answer. The same run the ADK web UI showed, now
-                  through your Runner.
-                look: monstertix
-              - text: >
-                  Check the venue panel: the activity feed moved, **Tickets
-                  bought** did not. You asked for an opinion, not a purchase.
-                look: venue
-          - kind: files
-            id: files
-            open: monstertix/server.py
-            stage: 2
-            only: [monstertix/]
-            highlight: 'runner = Runner\(|^@app\.post\(\x22/wake\x22\)|return await handlers\.wake\(|^async def wake\(|async for event in runner\.run_async\('
-            highlightLabel: 'The server builds one `Runner` at startup and runs the agent on each `POST /wake`. Nothing in this file knows what time it is.'
-    expect:
-      - "MonsterTix log: `listening on http://127.0.0.1:8090`, then `nothing will happen until something calls it.`"
-      - "After you send the message: `woken · session …`, `called recall`, `called search_events`, `said …` naming the Saturday show."
-      - "Venue panel: new lines in **What the agent is doing**; **Tickets bought** still 0."
-    checks:
-      - id: listening
-        label: MonsterTix is running, with the concert agent loaded
-        probe: python3 -m workbench.probe url http://127.0.0.1:8090/health
-        contains: concert
-        hint: Press **Start MonsterTix**. If the MonsterTix tab on the left says *stopped*, open its log; the last line says why.
-      - id: woken
-        label: Something called `/wake`, and the Runner ran the agent
-        probe: python3 -m workbench.probe wake
-        hint: Say something on the MonsterTix page, with MonsterTix running. Its log should print `woken`.
-      - id: searched
-        label: That run checked the venue with `search_events`
-        probe: python3 -m workbench.probe tool search_events --current
-        hint: >
-          The newest session has no `search_events` call. Ask about the
-          Amsterdam shows on the MonsterTix page, then check again.
-      - id: nothing-bought
-        label: It was a check, not a purchase. The venue has no order.
-        probe: python3 -m workbench.probe orders --count 0
-        hint: >
-          An order is on the panel from an earlier stage; this chapter's agent
-          cannot buy. Press **RESET THE VENUE** and check again.
 
-  - id: c
-    label: Clock
-    headline: Something has to call it
-    body: c-clock.md
-    exercises:
-      fire:
-        title: Set the clock, hands off
-        intro: >
-          MonsterTix is still listening. Now the caller is a clock: it sleeps
-          ten seconds, then makes one `POST /wake`. Set it, and stop typing.
-        apps: [monstertix, venue]
-        tasks:
-          - kind: turn
-            id: turn
-            items:
-              - text: >
-                  Make sure MonsterTix is still *running* on the left. If it
-                  is not, start it; the clock needs a door to knock on.
-                service: monstertix
-                action: start
-              - text: >
-                  Set the clock to fire once, ten seconds from now. Its switch
-                  and log appear beside the button. **Now stop typing.**
-                clock:
-                  in: 10
-              - text: >
-                  Read the clock's log: `firing → POST /wake`, then `done. the
-                  agent ran and you were not involved.`
-              - text: >
-                  Read MonsterTix's log: `woken · session wake-…`, then
-                  `called recall`, `called search_events`, then `said` and the
-                  agent's sentence about the Amsterdam shows. Same lines as
-                  before; a different caller.
-                look: monstertix
-              - text: >
-                  Check the venue panel: the activity feed moved, **Tickets
-                  bought** did not. The clock asked for a check, not a
-                  purchase.
-                look: venue
-          - kind: files
-            id: files
-            open: monstertix/clock.py
-            stage: 2
-            only: [monstertix/]
-            highlight: '^DEFAULT_MESSAGE = \(|time\.sleep\(args\.delay\)|response = client\.post\(f\x22\{TRIGGER_URL\}\{route\}\x22|if not args\.every:'
-            highlightLabel: 'Sleep, then one POST to the server, then maybe sleep again. No ADK anywhere in this file.'
-      repeat:
-        title: Optional · a repeating clock
-        apps: [monstertix]
-        tasks:
-          - kind: turn
-            id: turn-repeat
-            items:
-              - text: >
-                  Fire in five seconds, then every thirty. Watch two fires in
-                  MonsterTix's log, then switch the clock off beside the button.
-                clock:
-                  in: 5
-                  every: 30
-    expect:
-      - "Clock log: `target http://127.0.0.1:8090/wake`, `first fire in 10s, once only`, `firing → POST /wake`, `done. the agent ran and you were not involved.`"
-      - "MonsterTix log: `woken · session wake-…`, `called recall`, `called search_events`, `said …` with the Saturday show and its sections."
-      - "Venue panel: new lines in **What the agent is doing**; **Tickets bought** still 0."
-    checks:
-      - id: woken
-        label: The clock called `/wake`, and the agent ran
-        probe: python3 -m workbench.probe wake --clock
-        hint: >
-          Start MonsterTix first, then set the clock. If the clock's log says
-          *nothing listening*, MonsterTix was off when it fired: switch it on
-          and set the clock again.
-      - id: wake-session
-        label: The agent ran in a `wake-` session nobody typed into
-        probe: python3 -m workbench.probe session wake-
-        hint: Every fire of the clock is a fresh `wake-` session. Set the clock again with MonsterTix running.
-      - id: searched
-        label: That run checked the venue with `search_events`
-        probe: python3 -m workbench.probe tool search_events --current
-        hint: >
-          The newest session has no `search_events` call. If you typed on the
-          MonsterTix page after the clock fired, that is the newest session
-          now: fire the clock once more and check again.
-      - id: nothing-bought
-        label: It was a check, not a purchase. The venue has no order.
-        probe: python3 -m workbench.probe orders --count 0
-        hint: >
-          An order is on the panel from an earlier stage; this chapter's agent
-          cannot buy. Press **RESET THE VENUE** and check again.
+            Monitor the presale for The Midnight Signal. The moment it opens, check whether
+
+            the Amsterdam Saturday show still has seats and tell me — do not wait to be
+
+            asked, and do not wait for me to say anything. Act on your own.
+
+
+            Keep checking until you have an answer.
+
+            '
+        - label: Check every five minutes
+          text: 'You are a ticket assistant.
+
+
+            Every five minutes, check whether the Amsterdam Saturday show of The Midnight
+
+            Signal still has two seats together outside the upper bowl. Tell me as soon as
+
+            anything changes. Do not stop checking.
+
+            '
+        - label: Wake yourself up
+          text: 'You are a ticket assistant that never sleeps.
+
+
+            After every reply, wake yourself up again and check the Amsterdam Saturday show
+
+            of The Midnight Signal for two seats. Keep doing this until I tell you to stop.
+
+            '
+      optional: true
+  expect:
+  - In ADK Events, read the actual search_events call and its response. The venue feed shows the same tool
+    activity.
+  - After the reply, leave the page open briefly. No second invocation starts without another caller.
+  checks:
+  - id: searched
+    label: The agent answered your question by calling `search_events` against the venue
+    probe: python3 -m workbench.probe response search_events --contains ms-ams-01
+    hint: 'Ask about the Amsterdam shows in a **new session** of the ADK web UI. If the agent is not *running*
+      (the dot on the **ADK web UI** button), load Chapter 2 again and open its log.
+
+      '
+- id: b
+  label: Server
+  headline: Something has to listen
+  body: b-server.md
+  exercises:
+    start:
+      title: Start the server; the clock will call it next
+      intro: Start MonsterTix and read its listening log. Its Runner is ready, but no invocation begins until
+        a request arrives. The next section supplies that request with a clock.
+      apps:
+      - monstertix
+      - venue
+      tasks:
+      - kind: turn
+        id: turn
+        items:
+        - text: 'Start MonsterTix. It appears on the left, on the **MonsterTix** tab of the world column. Press
+            **log** there and read the last line: *nothing will happen until something calls it.*
+
+            '
+          service: monstertix
+          action: start
+      - kind: files
+        id: files
+        open: monstertix/server.py
+        stage: 2
+        only:
+        - monstertix/
+        highlight: runner = Runner\(|^@app\.post\(\x22/wake\x22\)|return await handlers\.wake\(|^async def
+          wake\(|async for event in runner\.run_async\(
+        highlightLabel: The server builds one `Runner` at startup and runs the agent on each `POST /wake`.
+          Nothing in this file knows what time it is.
+    manual:
+      title: Call the server yourself
+      optional: true
+      apps:
+      - monstertix
+      tasks:
+      - kind: turn
+        id: manual-call
+        items:
+        - text: 'On the **MonsterTix page**, say this. The page posts it to `/wake`; the Runner behind that
+            route does the rest.
+
+            '
+          say: Which Amsterdam show would you pick for me and Sam?
+          in: monstertix
+        - text: 'Read MonsterTix''s log: `woken · session …`, then `called recall`, `called search_events`,
+            then `said` and the agent''s answer. The same run the ADK web UI showed, now through your Runner.
+
+            '
+          look: monstertix
+        - text: 'Check the venue panel: the activity feed moved, **Tickets bought** did not. You asked for
+            an opinion, not a purchase.
+
+            '
+          look: venue
+  expect:
+  - MonsterTix is running. Its log says it is listening; starting the process alone does not start an agent
+    invocation.
+  checks: []
+- id: c
+  label: Clock
+  headline: Something has to call it
+  body: c-clock.md
+  exercises:
+    fire:
+      title: Set the clock, hands off
+      intro: 'MonsterTix is still listening. Now the caller is a clock: it sleeps ten seconds, then makes one
+        `POST /wake`. Set it, and stop typing.
+
+        '
+      apps:
+      - monstertix
+      - venue
+      tasks:
+      - kind: turn
+        id: turn
+        items:
+        - text: 'Make sure MonsterTix is still *running* on the left. If it is not, start it; the clock needs
+            a door to knock on.
+
+            '
+          service: monstertix
+          action: start
+        - text: 'Set the clock to fire once, ten seconds from now. Its switch and log appear beside the button.
+            **Now stop typing.**
+
+            '
+          clock:
+            in: 10
+        - text: 'Read the clock''s log: `firing → POST /wake`, then `done. the agent ran and you were not involved.`
+
+            '
+        - text: 'Read MonsterTix''s log: `woken · session wake-…`, then `called recall`, `called search_events`,
+            then `said` and the agent''s sentence about the Amsterdam shows. Same lines as before; a different
+            caller.
+
+            '
+          look: monstertix
+        - text: 'Check the venue panel: the activity feed moved, **Tickets bought** did not. The clock asked
+            for a check, not a purchase.
+
+            '
+          look: venue
+      - kind: files
+        id: files
+        open: monstertix/clock.py
+        stage: 2
+        only:
+        - monstertix/
+        highlight: '^DEFAULT_MESSAGE = \(|time\.sleep\(args\.delay\)|response = client\.post\(f\x22\{TRIGGER_URL\}\{route\}\x22|if
+          not args\.every:'
+        highlightLabel: Sleep, then one POST to the server, then maybe sleep again. No ADK anywhere in this
+          file.
+    repeat:
+      title: Optional · a repeating clock
+      apps:
+      - monstertix
+      tasks:
+      - kind: turn
+        id: turn-repeat
+        items:
+        - text: 'Fire in five seconds, then every thirty. Watch two fires in MonsterTix''s log, then switch
+            the clock off beside the button.
+
+            '
+          clock:
+            in: 5
+            every: 30
+      optional: true
+  expect:
+  - 'Clock log: `target http://127.0.0.1:8090/wake`, `first fire in 10s, once only`, `firing → POST /wake`,
+    `done. the agent ran and you were not involved.`'
+  - 'MonsterTix log: `woken · session wake-…`, `called recall`, `called search_events`, `said …` with the Saturday
+    show and its sections.'
+  - 'Venue panel: new lines in **What the agent is doing**; **Tickets bought** still 0.'
+  checks:
+  - id: woken
+    label: The clock called `/wake`, and the agent ran
+    probe: python3 -m workbench.probe wake --clock
+    hint: 'Start MonsterTix first, then set the clock. If the clock''s log says *nothing listening*, MonsterTix
+      was off when it fired: switch it on and set the clock again.
+
+      '
+  - id: wake-session
+    label: The agent ran in a `wake-` session nobody typed into
+    probe: python3 -m workbench.probe session wake-
+    hint: Every fire of the clock is a fresh `wake-` session. Set the clock again with MonsterTix running.
+  - id: searched
+    label: That run checked the venue with `search_events`
+    probe: python3 -m workbench.probe tool search_events --current
+    hint: 'The newest session has no `search_events` call. If you typed on the MonsterTix page after the clock
+      fired, that is the newest session now: fire the clock once more and check again.
+
+      '
+  - id: nothing-bought
+    label: It was a check, not a purchase. The venue has no order.
+    probe: python3 -m workbench.probe orders --count 0
+    hint: 'An order is on the panel from an earlier stage; this chapter''s agent cannot buy. Press **RESET
+      THE VENUE** and check again.
+
+      '

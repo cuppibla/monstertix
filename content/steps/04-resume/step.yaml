@@ -1,12 +1,11 @@
 title: Pause, Restart, Resume
-minutes: 25
+minutes: 18
 color: amber
 stage: 4
-summary: >-
-  The queue is forty minutes long and nobody should keep a process alive for it. In this chapter
-  the wait becomes a pause written to the session store, the agent gets killed in the middle of
-  it, and the same task picks up where it stopped, with the same ticket, until it is at the
-  front of the queue and ready to buy. Nothing is bought yet.
+summary: The queue is forty minutes long and nobody should keep a process alive for it. In this chapter the
+  wait becomes a pause written to the session store, the agent gets killed in the middle of it, and the same
+  task picks up where it stopped, with the same ticket, until it is at the front of the queue and ready to
+  buy. Nothing is bought yet.
 parts:
 - id: a
   label: Stop
@@ -15,11 +14,12 @@ parts:
   exercises:
     run:
       title: Start the task and watch it stop on purpose
-      intro: >-
-        Load chapter 4. The dropdown still says `concert`, but what answers is now a graph:
-        `open_the_night → pick_show → queue_up → check_front → ready_to_buy`. You will not pause
-        anything by hand. One message starts the graph, and the graph stops itself.
-      apps: [agent, venue]
+      intro: 'Load chapter 4. The dropdown still says `concert`, but what answers is now a graph: `open_the_night
+        → pick_show → queue_up → check_front → ready_to_buy`. You will not pause anything by hand. One message
+        starts the graph, and the graph stops itself.'
+      apps:
+      - agent
+      - venue
       tasks:
       - kind: prepare
         id: prepare
@@ -29,70 +29,67 @@ parts:
         open: agent/concert/nightly.py
         stage: 4
         compare: 3
-        only: [agent/concert/]
-        highlight: '^@node\(rerun_on_resume=|^pick_show = node\(picker|^\s+return RequestInput\(|^QUEUE_WAIT = |^nightly = Workflow\(|edges=\[\(START|^root_agent = nightly|resumability_config=ResumabilityConfig'
-        highlightLabel: >-
-          `nightly` is the graph and `root_agent` now points at it. One node is an agent
-          (`pick_show`); the rest are functions. `check_front` returns `RequestInput` when you are
-          not at the front, which parks the run; `ResumabilityConfig` is what lets it be picked up.
+        only:
+        - agent/concert/
+        highlight: ^@node\(rerun_on_resume=|^pick_show = node\(picker|^\s+return RequestInput\(|^QUEUE_WAIT
+          = |^nightly = Workflow\(|edges=\[\(START|^root_agent = nightly|resumability_config=ResumabilityConfig
+        highlightLabel: '`nightly` is the graph and `root_agent` now points at it. One node is an agent (`pick_show`);
+          the rest are functions. `check_front` returns `RequestInput` when you are not at the front, which
+          parks the run; `ResumabilityConfig` is what lets it be picked up.'
       - kind: turn
         id: turn
         items:
         - text: Press **New Session** in the ADK web UI.
           look: agent
-        - text: >-
-            One message starts the graph. Watch the left panel colour the nodes in as they run, and
-            watch the agent log (**log**, at the top of the drawer).
+        - text: One message starts the graph. Watch the left panel colour the nodes in as they run, and watch
+            the agent log (**log**, at the top of the drawer).
           say: Get me and Sam two tickets to the Amsterdam show.
           in: agent
-        - text: >-
-            Open the **State** tab: `queue_ticket`, `queue_event_id` and `plan` arrived when
-            `queue_up` ran. Then find the last event, `adk_request_input`, with a box under it. Do
-            not type in it.
+        - text: 'Open the **State** tab: `queue_ticket`, `queue_event_id` and `plan` arrived when `queue_up`
+            ran. Then find the last event, `adk_request_input`, with a box under it. Do not type in it.'
           look: agent
-        - text: >-
-            Look at the venue panel: one ticket, position dropping, and a banner telling you the
-            agent can be killed. Nothing of yours is running right now.
+        - text: 'Look at the venue panel: one ticket, position dropping, and a banner telling you the agent
+            can be killed. Nothing of yours is running right now.'
           look: venue
-        - text: >-
-            That was the pause, and you did not press anything. `check_front` found you were not
-            at the front, returned `RequestInput`, and the run stopped; the task card on this page
-            reads *paused in the queue*. Leave **Resume current task** alone for now: 4b kills
-            the process first, and 4c is where you resume.
+        - text: 'The task is paused on the queue. Leave **Resume current task** alone for now: next you will
+            kill the process, bring it back, move this ticket to the front, and resume once. The last section
+            explains the records.'
   expect:
-  - "The graph lights up `START`, `open_the_night`, `pick_show`, `queue_up` and `check_front`. `ready_to_buy` stays grey."
-  - "The agent log: `[open]        Nobody is awake. Choosing the show.`, `[queue_up]    ms-ams-01 section A — ticket q_… at #14,203`, then `[check_front] #14,… — not yet. Pausing.`"
-  - "**State**: `queue_ticket: q_…`, `queue_event_id: ms-ams-01`, `plan: {event_id: ms-ams-01, section: A, seats: 2, …}`, `request: Get me and Sam two tickets…`"
-  - "The last event is a function call `adk_request_input` with the message *Still in the queue at #14,… . Wake me again and I will check.* Then nothing: the run has ended."
-  - "Venue banner: **Agent is waiting in line, #14,…** / *…s left at 1×. Safe to kill the agent. It will still be here. SKIP THE WAIT sends it to the front.*"
-  - "The task card on this page: *paused in the queue · nothing is running* · paused on **the queue** · `queue:wait` · ticket `q_… · ms-ams-01`."
+  - The graph lights up `START`, `open_the_night`, `pick_show`, `queue_up` and `check_front`. `ready_to_buy`
+    stays grey.
+  - 'The agent log: `[open]        Nobody is awake. Choosing the show.`, `[queue_up]    ms-ams-01 section A
+    — ticket q_… at #14,203`, then `[check_front] #14,… — not yet. Pausing.`'
+  - '**State**: `queue_ticket: q_…`, `queue_event_id: ms-ams-01`, `plan: {event_id: ms-ams-01, section: A,
+    seats: 2, …}`, `request: Get me and Sam two tickets…`'
+  - 'The last event is a function call `adk_request_input` with the message *Still in the queue at #14,… .
+    Wake me again and I will check.* Then nothing: the run has ended.'
+  - 'Venue banner: **Agent is waiting in line, #14,…** / *…s left at 1×. Safe to kill the agent. It will still
+    be here. SKIP THE WAIT sends it to the front.*'
+  - 'The task card on this page: *paused in the queue · nothing is running* · paused on **the queue** · `queue:wait`
+    · ticket `q_… · ms-ams-01`.'
   checks:
   - id: nodes
-    label: "`pick_show`, `queue_up` and `check_front` ran in this session"
+    label: '`pick_show`, `queue_up` and `check_front` ran in this session'
     probe: python3 -m workbench.probe nodes pick_show queue_up check_front --current
-    hint: >-
-      In a new session, send "Get me and Sam two tickets to the Amsterdam show." If the graph
-      stops after `pick_show` with no ticket, read the agent log: the venue may be down. Restart
-      the venue from its switch and load chapter 4 again.
+    hint: 'In a new session, send "Get me and Sam two tickets to the Amsterdam show." If the graph stops after
+      `pick_show` with no ticket, read the agent log: the venue may be down. Restart the venue from its switch
+      and load chapter 4 again.'
   - id: ticket
-    label: "`queue_up` wrote `queue_ticket` into session state"
+    label: '`queue_up` wrote `queue_ticket` into session state'
     probe: python3 -m workbench.probe state queue_ticket --current
-    hint: >-
-      The ticket is written when `queue_up` runs. If `pick_show` returned no plan, the log says
-      `[queue_up]    no show chosen`; start a new session and send the message again.
+    hint: The ticket is written when `queue_up` runs. If `pick_show` returned no plan, the log says `[queue_up]    no
+      show chosen`; start a new session and send the message again.
   - id: paused
     label: The task is paused on the queue, holding a ticket
     probe: python3 -m workbench.probe task --kind queue --ticket
-    hint: >-
-      `check_front` returns `RequestInput(interrupt_id="queue:wait")` when you are not at the
-      front. If the task card says *ready to buy* already, somebody pressed SKIP THE WAIT before
-      the run: press RESET THE VENUE and start a new session.
+    hint: '`check_front` returns `RequestInput(interrupt_id="queue:wait")` when you are not at the front. If
+      the task card says *ready to buy* already, somebody pressed SKIP THE WAIT before the run: press RESET
+      THE VENUE and start a new session.'
   - id: oneticket
     label: The venue handed out exactly one queue ticket
     probe: python3 -m workbench.probe tickets --count 1
-    hint: >-
-      Two tickets means two runs joined the queue, usually from a second message in the chat box.
-      Load chapter 4 again (it resets the venue) and send the message once, in a new session.
+    hint: Two tickets means two runs joined the queue, usually from a second message in the chat box. Load
+      chapter 4 again (it resets the venue) and send the message once, in a new session.
 - id: b
   label: Kill
   headline: Nothing dies with the process
@@ -100,73 +97,68 @@ parts:
   exercises:
     run:
       title: Kill the process, then continue the same task
-      needs: >-
-        The task you started in 4a, parked in the queue. If the task card says *no task yet*,
-        go back to 4a and send the message.
-      intro: >-
-        The point of this section: the process dies, the task does not. Same session, same
-        ticket. Before you press anything, guess which of these die with the process: the
-        ticket, the plan, the place in the queue, the paused run, the conversation. The answer
-        is at the end of the page.
-      apps: [agent, venue]
+      needs: The task you started in 4a, parked in the queue. If the task card says *no task yet*, go back
+        to 4a and send the message.
+      intro: 'The point of this section: the process dies, the task does not. Same session, same ticket. Before
+        you press anything, guess which of these die with the process: the ticket, the plan, the place in the
+        queue, the paused run, the conversation. The answer is at the end of the page.'
+      apps:
+      - agent
+      - venue
       tasks:
       - kind: turn
         id: turn
         items:
-        - text: "Kill the agent process. **kill -9** is at the top of the ADK web UI drawer; this button does the same."
+        - text: Kill the agent process. **kill -9** is at the top of the ADK web UI drawer; this button does
+            the same.
           service: agent
           action: kill
-        - text: "Look at the venue panel: the number is still dropping. The venue did not notice; the queue is the venue's, and the agent only holds a ticket to it."
+        - text: 'Look at the venue panel: the number is still dropping. The venue did not notice; the queue
+            is the venue''s, and the agent only holds a ticket to it.'
           look: venue
         - text: Start the agent again.
           service: agent
           action: start
-        - text: "Press **Resume current task**. The paused run picks up where it stopped: still in the queue, with a lower number. It does not start over. Do not type in the chat box."
-          resume: task
-        - text: "Press **SKIP THE WAIT** on the venue panel. The ticket moves to the front of the queue."
+        - text: Press **SKIP THE WAIT** on the venue panel. The ticket moves to the front of the queue.
           press: SKIP THE WAIT
           venue: advance-queue
-        - text: "Resume once more. This time the run gets past `check_front`: the task is **ready to buy**, and nothing is bought."
+        - text: Resume once, in this same task. check_front queries the venue again; the task becomes **ready
+            to buy**, with zero orders. Do not type a new chat message.
           resume: task
   expect:
-  - "After kill -9: the venue panel keeps counting down the same `q_…` ticket. The ADK web UI drawer says *killed* until you start it again."
-  - "After the first Resume: the log gains one line, `[check_front] #… — not yet. Pausing.`, with a lower position than before. No second show, no second ticket."
-  - "After SKIP THE WAIT and the second Resume: `[check_front] at the front`, then `[ready]       at the front for ms-ams-01. Ready to buy.` The graph is fully green."
-  - "The reply in the chat: *At the front of the queue for ms-ams-01 in Amsterdam: 2 seats in section A. Ready to buy. Nothing is bought in this chapter.*"
-  - "Venue: one ticket, **AT THE FRONT**; banner *Agent is at the front of the queue*. No order. The task card: *ready to buy* · yes."
+  - 'After kill -9: the venue panel keeps counting down the same `q_…` ticket. The ADK web UI drawer says *killed*
+    until you start it again.'
+  - 'After SKIP THE WAIT and Resume: `[check_front] at the front`, then `[ready]       at the front for ms-ams-01.
+    Ready to buy.` The graph is fully green.'
+  - 'Venue: one ticket, **AT THE FRONT**; banner *Agent is at the front of the queue*. No order. The task card:
+    *ready to buy* · yes.'
   checks:
   - id: killed
     label: The agent was killed with -9, then started again
     probe: python3 -m workbench.probe killed agent --restarted
-    hint: >-
-      Use **kill -9** at the top of the ADK web UI drawer, then its switch to start it again.
-      Stopping it with the switch is a clean shutdown and does not count.
+    hint: Use **kill -9** at the top of the ADK web UI drawer, then its switch to start it again. Stopping
+      it with the switch is a clean shutdown and does not count.
   - id: resumed
     label: It was woken again and kept the same place in line
     probe: python3 -m workbench.probe resumed
-    hint: >-
-      Press **Resume current task**, not the chat box. If the report says *it joined the queue
-      again*, a message went through the chat box and started a new run: load chapter 4 again and
-      repeat 4A and 4B in one session.
+    hint: 'Press **Resume current task**, not the chat box. If the report says *it joined the queue again*,
+      a message went through the chat box and started a new run: load chapter 4 again and repeat 4A and 4B
+      in one session.'
   - id: ready
     label: The task reached `ready_to_buy`
     probe: python3 -m workbench.probe task --ready
-    hint: >-
-      Press SKIP THE WAIT on the venue panel, then Resume current task once more. If the card still
-      says *paused in the queue*, the venue clock may be slow: check the panel says AT THE FRONT
-      before resuming.
+    hint: 'Press SKIP THE WAIT on the venue panel, then Resume current task once. If the card still says *paused
+      in the queue*, the venue clock may be slow: check the panel says AT THE FRONT before resuming.'
   - id: oneticket
     label: Still exactly one queue ticket at the venue
     probe: python3 -m workbench.probe tickets --count 1
-    hint: >-
-      A second ticket means the graph ran `queue_up` twice: a new invocation from the chat box, or
-      a second session. Load chapter 4 again and do 4A and 4B once each.
+    hint: 'A second ticket means the graph ran `queue_up` twice: a new invocation from the chat box, or a second
+      session. Load chapter 4 again and do 4A and 4B once each.'
   - id: node
-    label: "`ready_to_buy` ran in this session"
+    label: '`ready_to_buy` ran in this session'
     probe: python3 -m workbench.probe nodes ready_to_buy --current
-    hint: >-
-      `ready_to_buy` only runs after `check_front` finds the ticket at the front. SKIP THE WAIT,
-      then Resume current task.
+    hint: '`ready_to_buy` only runs after `check_front` finds the ticket at the front. SKIP THE WAIT, then
+      Resume current task.'
 - id: c
   label: Resume
   headline: What runs again, and what must not
@@ -174,57 +166,45 @@ parts:
   exercises:
     read:
       title: Find the resume in the events
-      needs: The session from 4b, after its two Resumes.
-      intro: >-
-        No new actions. Read the session you just finished: on each Resume, which nodes ran
-        again, and which did not.
-      apps: [agent]
+      needs: The session from 4b, after its one Resume.
+      intro: 'No new actions. Read the session you just finished: on each Resume, which nodes ran again, and
+        which did not.'
+      apps:
+      - agent
       tasks:
       - kind: files
         id: files
         open: agent/concert/nightly.py
         stage: 4
         compare: 3
-        only: [agent/concert/]
-        highlight: '^@node\(rerun_on_resume=True\)|^@node\(rerun_on_resume=False\)|^pick_show = node\(picker, rerun_on_resume=False\)|interrupt_id=QUEUE_WAIT|status = venue\.get\(f"/queue/\{ticket\}"\)|resumability_config=ResumabilityConfig\(is_resumable=True\)'
-        highlightLabel: >-
-          `rerun_on_resume=True` on `check_front` is why every wake-up asks the venue again.
-          `False` on the others says: if a resume reaches you, do not start over.
-          `ResumabilityConfig(is_resumable=True)` on the `App` is what records where the run
-          stopped.
+        only:
+        - agent/concert/
+        highlight: ^@node\(rerun_on_resume=True\)|^@node\(rerun_on_resume=False\)|^pick_show = node\(picker,
+          rerun_on_resume=False\)|interrupt_id=QUEUE_WAIT|status = venue\.get\(f"/queue/\{ticket\}"\)|resumability_config=ResumabilityConfig\(is_resumable=True\)
+        highlightLabel: Completed nodes reuse their recorded outputs. For the node stopped on an answered interrupt,
+          rerun_on_resume=True runs its function again; False uses the answer as its output. check_front must
+          run again to read the live queue.
       - kind: turn
         id: turn
         items:
-        - text: >-
-            In the ADK web UI, scroll the **Events** of your session from the top. Mark the
-            boundary: everything up to the first `adk_request_input` is run 1; the
-            `adk_request_input` *response* (what Resume sent) starts run 2.
-          look: agent
-        - text: >-
-            In run 2, look for events authored by each node. `check_front` has a real one, with a
-            new position. `open_the_night`, `pick_show` and `queue_up` do not run again: their
-            outputs are re-surfaced from run 1, and the agent log has no new `[open]`,
-            `[pick_show]` or `[queue_up]` line.
-          look: agent
-        - text: >-
-            Click the edges in the graph panel. The edges into `pick_show`, `queue_up` and
-            `check_front` carry a count for each time the graph was entered; the venue shows one
-            ticket. Entering is not executing.
+        - text: 'In **Events**, find the queue:wait response that resumes the saved invocation. Compare the
+            node records: completed pick_show and queue_up outputs are reused; check_front queries the venue
+            again. The venue still has one ticket. Graph traversal counts alone do not prove a function ran.'
           look: agent
   expect:
-  - "Run 1 ends on `adk_request_input` (`queue:wait`). Run 2 begins with its response, `{\"checked\": true}`, which the Resume button sent."
-  - "In run 2 the only node with a fresh execution before `ready_to_buy` is `check_front`; its event carries the new position. The log has one `[check_front]` line per resume and one `[queue_up]` line in total."
-  - "Session state after it all: one `queue_ticket`, the same `plan`, and `ready_to_buy: true`."
+  - 'Run 1 ends on `adk_request_input` (`queue:wait`). Run 2 begins with its response, `{"checked": true}`,
+    which the Resume button sent.'
+  - In run 2 the only node with a fresh execution before `ready_to_buy` is `check_front`; its event carries
+    the new position. The log has one `[check_front]` line per resume and one `[queue_up]` line in total.
+  - 'Session state after it all: one `queue_ticket`, the same `plan`, and `ready_to_buy: true`.'
   checks:
   - id: answered
     label: The queue wait was answered, not re-asked from the chat
     probe: python3 -m workbench.probe pending --current --answered
-    hint: >-
-      Every `adk_request_input` in this session should have a matching response. If one is still
-      waiting, press Resume current task; if the card says nothing is paused, 4B is done.
+    hint: Every `adk_request_input` in this session should have a matching response. If one is still waiting,
+      press Resume current task; if the card says nothing is paused, 4B is done.
   - id: once
     label: Woken again, and still one ticket
     probe: python3 -m workbench.probe resumed
-    hint: >-
-      This is 4B's result read again. A second `queue_ticket` in state means a new run joined the
-      queue; the Checkpoint on this page explains the ways that can happen.
+    hint: This is 4B's result read again. A second `queue_ticket` in state means a new run joined the queue;
+      the Checkpoint on this page explains the ways that can happen.

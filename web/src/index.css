@@ -435,7 +435,8 @@ img { max-width: 100%; }
   .bench[data-rail="wide"] .bench__rail { height: 70vh; }
   .bench__main { padding-inline: 1rem; }
   .drawer, .drawer[data-steps="true"] { width: 100vw; }
-  .drawer__steps { display: none; }
+  .drawer__body { flex-direction: column; }
+  .drawer__steps { width: 100%; max-height: 45%; border-bottom: 1px solid var(--hairline); }
 }
 
 .dot {

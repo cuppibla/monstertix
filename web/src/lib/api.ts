@@ -28,6 +28,8 @@ export type TurnItem = {
   needs?: "queue";
   /** `resume: task`: the Resume current task button, in the numbered list. */
   resume?: "task";
+  /** One explicit setup action; the learner still resumes and inspects the run. */
+  scenario?: "purchase";
 };
 
 /** The current task, as /api/task reads it from the session store. */
@@ -107,6 +109,7 @@ export type Task = {
 };
 
 export type Exercise = { title?: string; intro?: string; tasks: Task[]; apps?: PaneTab[];
+  optional?: boolean;
   /** What must already be true before this card's buttons do anything. */
   needs?: string };
 

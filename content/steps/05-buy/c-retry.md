@@ -1,5 +1,5 @@
-The venue takes the order, writes it, charges the card, and the response
-never arrives. The caller sees a 503. Was the order created? It cannot tell.
+The simulated venue writes the order, then returns HTTP 503 instead of a
+success response. Was the order created? It cannot tell.
 "Submitted successfully" and "received a success response" are two different
 facts, and a network only promises the second when it promises anything.
 
@@ -10,7 +10,7 @@ the run; the order went through once. This section is why.
 :::exercise id="run"
 :::figure src="/docs-img/07-01-solution2.png" caption="The venue charges the order and then the reply fails. The retry carries the same idempotency key, so the venue answers with the order it already has: last_order is set once."
 :::
-:::figure src="/docs-img/09-01-hitl5.png" caption="One order, exactly as intended: 2× section A · 420, and section A's count down by two. However many times the purchase was retried."
+:::figure src="/docs-img/09-01-hitl5.png" caption="Earlier screenshot of a successful order. In this experiment A is sold out: check your live order for 2 seats in C, $190 total."
 :::
 :::
 
@@ -41,7 +41,7 @@ ask the same question twice. The response the model finally sees carries
 `attempts` and `idempotency_key`, so the Events tab tells you what happened
 without reading a log.
 
-:::optional title="Going deeper: the venue's half, and running it on a clean venue" minutes=8 needs="chapter 5 loaded"
+:::optional title="Going deeper: the venue’s half of idempotency" minutes=8 needs="chapter 5 loaded"
 :::file path="venue/app.py" label="Show venue/app.py — /purchase and /admin/hang-once"
 :::
 
@@ -59,24 +59,13 @@ Two branches in the venue's `/purchase` make this work:
    raise HTTPException(503, {"error": "upstream_timeout", "message": "try again"})
 ```
 
-**BREAK THE NEXT PURCHASE** arms branch 5: the seats are taken, the row is
+The scenario’s commit-then-503 fault arms branch 5: the seats are taken, the row is
 written, and *then* the response fails. The retry arrives with the same key,
 branch 1 finds the row, and the venue returns it with `duplicate: true`. One
 order. The activity feed shows both lines: `COMMITTED, then failed the
 response (hang-once)`, then `duplicate suppressed — returned ord_…`.
 
-**To run it on its own.** Reset the venue only (the bar in 5a, *Reset the
-venue*), start a **new session** in the ADK web UI, send the same request and
-agree the same limit, press **BREAK THE NEXT PURCHASE**, then **SKIP THE
-WAIT** and **Resume current task**. Same records, with nothing else in the
-run.
-:::
-
-:::note
-**Who else retries.** Here the tool retries. In production the retry may come
-from an HTTP client, a Pub/Sub push that did not get its 200, a scheduler, or
-the graph being woken again. The key protects against all of them for the
-same reason: it names the *operation*, not the attempt.
+There is no second experiment here: compare these two branches with the same order id in your live activity feed.
 :::
 
 :::key

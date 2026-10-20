@@ -1,54 +1,51 @@
 # MonsterTix — Long-Running Agents on Google Cloud
 
 A hands-on workshop on **long-running agents**, built with
-[ADK 2](https://adk.dev) and Google Cloud. The guided course targets **60–75
-minutes after setup**, with optional implementation reading and deployment.
-That timing is a teaching estimate, not a measured classroom result.
+[ADK 2](https://adk.dev) and Google Cloud. The balanced route keeps the original
+diagrams, source code and real ADK Web experiments while reducing repeated
+runs and moving additional investigations into optional sections.
 
 > Get two tickets to The Midnight Signal in Amsterdam, for me and Sam.
 > Sam can only do weekends, and we avoid the upper bowl. Save the task,
 > wait in the queue, survive a restart, and buy inside the limit I confirm.
 
 **Start in the workbench:** after the [pre-work](docs/PRE-WORK.md), run
-`./workbench.sh` and open the printed URL. Each chapter has one page with the
-next action, real results, and expandable code and records. The original
-[detailed codelab](docs/CODELAB.md) remains available for self-study.
+`./workbench.sh` and open the printed URL. Read the diagram and key code, do
+the numbered actions beside ADK Web, and inspect the result you produced.
+The [detailed codelab](docs/CODELAB.md) remains available for reference.
 
 ## The six chapters
 
-| # | Core experiment | What proves it | Target time |
-|---|---|---|---|
-| 1 | Meet the ticket task; check the environment once | Model reply, agent and venue reachable | 3–5 min |
-| 2 | Ask once; let a one-shot timer call again | Timer source and another invocation in the same session | 8–10 min |
-| 3 | Read one trace; save an aisle preference; ask in one new session | Session A/B events beside the actual memory write and recall | 12–15 min |
-| 4 | Queue, kill, restart and resume the same task | Same session and ticket; `ready_to_buy`; zero orders | 12–15 min |
-| 5 | Confirm a limit; prepare the combined fault; resume once | `stale_plan`, two HTTP attempts, duplicate suppression, one matching order | 15–18 min |
-| 6 | Watch an instructor's existing cloud task resume through Scheduler | Cloud task, trigger logs and matching venue order | 8–10 min |
+| # | Main experiment | What proves it |
+|---|---|---|
+| 1 · Meet | Explore the venue and ask the agent in ADK Web | Real tool calls and a reply; nothing bought |
+| 2 · Wake | Ask once, then let a 10-second clock call the server | An external caller starts the later invocation |
+| 3 · Memory | Save a preference in session A; recall it in B | The actual memory write and new session's recall response |
+| 4 · Resume | Queue, kill, restart and resume once | Same session and ticket; ready to buy; zero orders |
+| 5 · Buy | Confirm the limit, prepare one combined scenario, resume | Guard refusal, two HTTP attempts, exactly one order |
+| 6 · Cloud | Instructor demonstration of a saved cloud task | Cloud task, trigger logs and matching venue order |
 
-The short route has **13 learning milestones**: 1 + 2 + 3 + 3 + 3 + one cloud
-demonstration. Preparation and the human's two budget answers are real actions,
-not extra lessons. Time ranges allow different teaching pacing.
+**Session DB and Memory Service remain core material.** So do the distinction
+between completed node records and interrupted nodes, human authorization,
+live guards and idempotency. SQL, artifact inspection, prompt variants and
+repeating timers are optional. Compaction and LongRunningFunctionTool are
+read-only comparisons, not additional required experiments.
 
-**Session DB and Memory Service remain core material.** The course also keeps
-the distinction between completed node records and interrupted nodes, human
-authorization, live guards, and idempotency. SQL, Artifact Service details,
-compaction and the LongRunningFunctionTool comparison expand in place. LRFT
-is read-only comparison; it is not a loadable replacement experiment.
+The chapter links are `/step/meet`, `/step/wake`, `/step/remember`,
+`/step/resume`, `/step/buy`, `/step/cloud`. The a/b/c sections remain available
+at URLs such as `/step/buy/c`; they explain and inspect the same experiment,
+rather than requiring a fresh run on each page. `/study/...` is compatible.
+Loading a chapter deliberately resets live sessions, seeded memory and venue
+state. Simply moving between reading sections does not.
 
-The six core URLs are `/step/meet`, `/step/wake`, `/step/remember`,
-`/step/resume`, `/step/buy`, `/step/cloud`. Old `/step/buy/c` bookmarks land on
-the corresponding core chapter. Original a/b/c exercises are at `/study/...`.
-A new chapter deliberately loads a fresh code stage and resets live sessions,
-seeded memory and venue state. The page explains this before preparation;
-completed learning receipts and raw evidence survive in `runs/`.
+The course targets roughly **75–90 minutes after setup**, depending on time
+spent reading code. This is a teaching estimate, not a measured classroom
+result. Independent cloud deployment is an optional extension; the core Cloud
+page can inspect an existing deployment and dispatch an existing Scheduler
+job. A cloud task needs its own authorization; local sessions are not migrated.
 
-Independent cloud deployment is an **optional 20–30 minute extension**, with
-cleanup required if you create resources. The core cloud page does not deploy;
-it can inspect an `AGENT_SERVICE_URL` and dispatch an existing Scheduler job.
-A cloud task must have its own authorization. Local sessions are not migrated.
-
-See [the guided-course implementation notes](docs/SIMPLIFIED-LAB.md) for the
-state contract, boundaries, recovery and instructor walkthrough.
+See [the balanced-course notes](docs/SIMPLIFIED-LAB.md) for the interface,
+state boundaries and validation commands.
 
 ---
 
@@ -221,7 +218,7 @@ skipped unless `--live`. The suite includes the original chapter checks and guid
 
 ## For instructors
 
-- **[`docs/SIMPLIFIED-LAB.md`](docs/SIMPLIFIED-LAB.md)** — the current guided route and validation commands.
+- **[`docs/SIMPLIFIED-LAB.md`](docs/SIMPLIFIED-LAB.md)** — the balanced hands-on route and validation commands.
 - **[`docs/INSTRUCTOR.md`](docs/INSTRUCTOR.md)** — the original extended 110 + 10 minute plan,
   model answers to every checkpoint, what breaks and how to tell an expected
   outcome from an environment fault, what to cut, the clean-up order.

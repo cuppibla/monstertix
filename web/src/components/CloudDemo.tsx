@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { guides } from "../lib/guide";
 import { learningFetch } from "../lib/learning";
 import { GuideReading } from "./GuideReading";
+import { Content } from "./Content";
+import { useBench } from "../lib/bench";
 
 type Cloud = {configured:boolean;url:string;error:string;
   demo:{session_id?:string;dispatch?:{at:number;job:string;note:string}};
@@ -11,6 +13,8 @@ type Cloud = {configured:boolean;url:string;error:string;
 
 export function CloudDemo(){
   const guide=guides.cloud;
+  const {setCurrent,setGuided}=useBench();
+  useEffect(()=>{setCurrent(null);setGuided(null);},[setCurrent,setGuided]);
   const [state,setState]=useState<Cloud|null>(null),[sid,setSid]=useState(""),
     [error,setError]=useState(""),[busy,setBusy]=useState(false);
   async function reload(){try{setState(await learningFetch<Cloud>("/api/cloud-demo"));}catch(e){setError((e as Error).message);}}
@@ -23,6 +27,17 @@ export function CloudDemo(){
     <div className="kicker">Chapter 6 · instructor demo · {guide.minutes}</div>
     <h1>{guide.title}</h1><p className="guide-intro">{guide.intro}</p>
     <p className="guide-boundary"><b>Task boundary</b> {guide.boundary}</p>
+    <Content slug="cloud" color="var(--accent)" exercises={{}} stage={6} markdown={`
+:::figure src="/docs-img/overview.png" caption="The same task in the cloud: Scheduler calls the service; the session, memory and artifacts live outside its process."
+:::
+
+## Follow the request into the code
+
+The timer supplies the call. The handler loads the saved task and answers its queue wait. It leaves a task waiting for a person's answer alone.
+
+:::code path="agent/main.py" highlight="trigger_sources=|trigger/wake|allow="
+:::
+`}/>
     <section className="guide-action"><div className="kicker">One new thing to observe</div>
       <h2>A real Scheduler request resumes a real cloud task.</h2>
       <p>The instructor prepares a deployed task and confirms its budget on the cloud page. Keep that task waiting in the queue. Enter its session ID here, then bring its venue ticket to the front before triggering Scheduler.</p>

@@ -1,212 +1,245 @@
 title: Buy Within Agreed Limits
 kicker: Chapter 5
-minutes: 25
+minutes: 20
 color: purple
 stage: 5
-summary: >
-  The run reaches the front of the queue and, for the first time, spends money.
-  Three things have to be true at once: a person agreed the limit for this
-  task, the seat map is re-read in the instant before buying, and a retry
-  never buys twice.
+summary: 'The run reaches the front of the queue and, for the first time, spends money. Three things have to
+  be true at once: a person agreed the limit for this task, the seat map is re-read in the instant before buying,
+  and a retry never buys twice.
+
+  '
 parts:
-  - id: a
-    label: Permission
-    headline: A person says yes, for this task
-    body: a-authority.md
-    expect:
-      - "The run **stops** on an `adk_request_input` event before anything is searched: *Before I book anything: how many tickets, and the most to pay for each? For example: \"Two tickets, up to $250 each.\"*"
-      - "After your answer it reads the numbers back on a second event: *So: 2 tickets, up to $250 each. Have I got that right?*"
-      - "After *Yes, that's right.*: the **State** tab has **`authorization`** — `{text, seats: 2, per_seat_max: 250, confirmed: true, confirmed_at}` — and the agent's log reads `[agree_budget] agreed: 2 seats, up to $250 each (confirmed …)`, then `[queue_up] ms-ams-01 section A — ticket q_… at #14,203`, then `[check_front] #14,203 — not yet. Pausing.`"
-      - "The task card below says **Paused on: the queue** with the authorization beside it. The venue panel: one ticket in line, **no order**."
-    exercises:
-      run:
-        title: Start the task, and agree the limit first
-        intro: >
-          Load chapter 5, then start a **new session** in the ADK web UI
-          (the `+` next to the session list) before the first message. The
-          graph asks a question before it does anything else; answer it in
-          the event's own box, not the chat box at the bottom.
-        apps: [agent, venue]
-        tasks:
-          - kind: prepare
-            id: prepare
-            step: 5
-          - kind: files
-            id: files
-            open: agent/concert/nightly.py
-            stage: 5
-            compare: 4
-            only: [agent/concert/]
-            highlight: '^def agree_budget|interrupt_id=ASK_BUDGET|interrupt_id=CONFIRM_BUDGET|answers = ctx\.resume_inputs|ctx\.state\[budget\.AUTH_KEY\] = auth|edges=\[\(START, agree_budget|^AUTH_KEY = |^def parse\(|^def load\(|^def allows\('
-            highlightLabel: '`agree_budget` is the new first node: it asks, parses, reads back, and only after the second answer stores `authorization` in session state. `budget.py` holds the sentence and the two numbers the guard compares.'
-          - kind: turn
-            id: turn
-            items:
-              - text: Ask for the same thing as every chapter. The picker still reads memory for the rest.
-                say: Get me and Sam two tickets to the Amsterdam show.
-                in: agent
-              - text: >
-                  The run stops and asks. Answer in the **`Enter your
-                  response...`** box on the `adk_request_input` event — not
-                  the chat box, which would start a second run from the top.
-                answer: Two tickets, up to $250 each.
-                in: agent
-              - text: It reads the numbers back on a second event. Confirm in **that** event's box.
-                answer: "Yes, that's right."
-                in: agent
-              - text: >
-                  Open the **State** tab. `authorization` is there with your
-                  sentence and the two numbers. Then watch the log: `pick_show`
-                  reads memory and takes the Saturday, `queue_up` takes one
-                  ticket at #14,203, `check_front` pauses.
-              - text: Look at the venue panel. One ticket in line. Nothing bought.
-                look: venue
-    checks:
-      - id: asked
-        label: The graph started at `agree_budget`, in this session
-        probe: python3 -m workbench.probe nodes agree_budget --current
-        hint: Load chapter 5 above, start a new session in the ADK web UI, and send the first message. If `agree_budget` never appears, the agent is still running chapter 4's code — press **Load chapter 5** and restart the agent.
-      - id: answered
-        label: You answered a question in the event's own box
-        probe: python3 -m workbench.probe pending --answered --current
-        hint: Type the budget into the box on the `adk_request_input` event, not the chat box at the bottom. If the same question appears twice, a message went to the chat box and started a second run — start a new session and begin again.
-      - id: authorized
-        label: '`authorization` is confirmed for this task'
-        probe: python3 -m workbench.probe authorization --confirmed
-        hint: It is stored only after you confirm the read-back. Answer "Yes, that's right." in the second question's box. "Read back, not confirmed yet" means the second answer has not landed.
-      - id: parked
-        label: The task is paused on the queue, not on you
-        probe: python3 -m workbench.probe task --kind queue
-        hint: 'After the confirmation the graph should pick, queue and pause by itself. If it is still "waiting for you", answer the open question in its box. If nothing is paused and there is no ticket, the venue was reset under it — start a new session. Once 5B resumes and buys, this row stops passing: the task is no longer paused, which is the point of 5B.'
-      - id: nothing-bought
-        label: No order yet for this task
-        probe: python3 -m workbench.probe orders --since-session --count 0
-        hint: 'Nothing should be bought in this section. An order here means the queue was skipped and the run resumed early — reset the venue with **Load chapter 5** and start a new session. After 5B this row goes red on purpose: the same session now has its one order.'
+- id: a
+  label: Permission
+  headline: A person says yes, for this task
+  body: a-authority.md
+  expect:
+  - 'The run **stops** on an `adk_request_input` event before anything is searched: *Before I book anything:
+    how many tickets, and the most to pay for each? For example: "Two tickets, up to $250 each."*'
+  - 'After your answer it reads the numbers back on a second event: *So: 2 tickets, up to $250 each. Have I
+    got that right?*'
+  - 'After *Yes, that''s right.*: the **State** tab has **`authorization`** — `{text, seats: 2, per_seat_max:
+    250, confirmed: true, confirmed_at}` — and the agent''s log reads `[agree_budget] agreed: 2 seats, up to
+    $250 each (confirmed …)`, then `[queue_up] ms-ams-01 section A — ticket q_… at #14,203`, then `[check_front]
+    #14,203 — not yet. Pausing.`'
+  - 'The task card below says **Paused on: the queue** with the authorization beside it. The venue panel: one
+    ticket in line, **no order**.'
+  exercises:
+    run:
+      title: Start the task, and agree the limit first
+      intro: 'Load chapter 5, then start a **new session** in the ADK web UI (the `+` next to the session list)
+        before the first message. The graph asks a question before it does anything else; answer it in the
+        event''s own box, not the chat box at the bottom.
 
-  - id: b
-    label: Guard
-    headline: Re-read the world before money moves
-    body: b-world.md
-    expect:
-      - "After **SELL THE GOOD SEATS**: the venue panel shows Section A **SOLD OUT** for every Amsterdam show. The agent has not noticed; it is parked and holds a seat map that says 400 seats."
-      - "After **SKIP THE WAIT** and **Resume current task**: in **Events**, `check_front` finds the front, `brief` hands over the plan, and the buyer calls `purchase(ms-ams-01, A, 2)` first. Its response is the guard's refusal: `{\"error\": true, \"reason\": \"stale_plan\", \"believed_available\": 400, \"actually_available\": 0, …}`. The venue was never called."
-      - "Then `get_seatmap`, then `purchase(ms-ams-01, C, 2)` — section C, $95 a seat, inside $250, not the upper bowl. One breakfast message, one `remember()`."
-      - "The venue panel: **One order, exactly as intended** — `2× section C · 190`. The task card: the last order, and nothing paused."
-      - "The second `purchase` response carries `attempts: 2` and `duplicate: true`: the armed fault fired on the order that went through, and the retry got the same order back. Read in 5c."
-    exercises:
-      run:
-        title: Change the world while it waits
-        needs: >
-          The task you started in 5a, still parked in the queue with its authorization
-          confirmed. If the task card says *no task yet* or the venue shows nobody in line,
-          go back to **5a** and run it; loading a chapter wipes the previous task.
-        intro: >
-          Same session, same task, same ticket. Nothing is reloaded here.
-        apps: [agent, venue]
-        tasks:
-          - kind: files
-            id: files
-            open: agent/concert/fence.py
-            stage: 5
-            compare: 4
-            only: [agent/concert/]
-            highlight: '^def refresh_before_purchase|if tool\.name != "purchase"|live = venue\.get\(f"/events/\{event_id\}/seatmap"\)|"reason": "stale_plan"|"believed_available"|"actually_available"|before_tool_callback=refresh_before_purchase'
-            highlightLabel: '`refresh_before_purchase` runs in the instant before every `purchase`. It re-reads the live seat map and returns a dict with a `reason` when the plan no longer fits — and a returned dict short-circuits the tool, so the venue is never called.'
-          - kind: turn
-            id: turn
-            items:
-              - text: >
-                  The agent is parked holding a seat map from before the wait.
-                  Make that seat map wrong: sell out Section A across the
-                  Amsterdam shows.
-                press: SELL THE GOOD SEATS
-                venue: sellout
-                body: {city: Amsterdam, section: A}
-                needs: queue
-              - text: >
-                  Arm one more fault for the next section to read: the venue will
-                  **commit** the next order and then fail the response with a 503.
-                press: BREAK THE NEXT PURCHASE
-                venue: hang-once
-                needs: queue
-              - text: Bring the ticket to the front.
-                press: SKIP THE WAIT
-                venue: advance-queue
-                needs: queue
-              - text: >
-                  Wake the run. The button answers the session's `queue:wait`
-                  with `{"checked": true}` — the same answer a clock would give.
-                  Do not type in the chat.
-                resume: task
-              - text: >
-                  Read **Events** in order: `purchase` for section A, the guard's
-                  `stale_plan` refusal, `get_seatmap`, then `purchase` for
-                  section C. Open the first `purchase` response: that is the guard.
-                  (The second one says `attempts: 2`; 5c is about that.)
-                look: agent
-              - text: 'The venue panel: one order, section C, two seats, $190.'
-                look: venue
-    checks:
-      - id: stale
-        label: The guard refused the old plan with `stale_plan`
-        probe: python3 -m workbench.probe guard stale_plan
-        hint: Press SELL THE GOOD SEATS while the run is still parked, then SKIP THE WAIT, then Resume current task. If the last purchase response has no `reason`, section A was still available when it bought — the sell-out came too late. Load chapter 5 again and redo 5A and 5B in order. After 5C starts a new session this row reads that session and goes red — expected.
-      - id: order
-        label: One order for this task, section C, two seats
-        probe: python3 -m workbench.probe orders --since-session --count 1 --section C --qty 2
-        hint: Expected after the resume. Zero orders with a `stale_plan` refusal means the buyer stopped after the refusal — read its last message; it may have found no section it would take. Two orders means a message went to the chat box and started a second run. Section B means it ignored memory; ask it why, then redo from 5A. After 5C starts a new session, this row reads that session instead and no longer passes — that is the scope, not a regression.
-      - id: remembered
-        label: '`last_order` is in this session''s state'
-        probe: python3 -m workbench.probe state last_order --current
-        hint: Set by the purchase tool once the venue answers without an error. If the order exists on the venue but this is missing, the agent was restarted mid-run — check the agent's log.
+        '
+      apps:
+      - agent
+      - venue
+      tasks:
+      - kind: prepare
+        id: prepare
+        step: 5
+      - kind: files
+        id: files
+        open: agent/concert/nightly.py
+        stage: 5
+        compare: 4
+        only:
+        - agent/concert/
+        highlight: ^def agree_budget|interrupt_id=ASK_BUDGET|interrupt_id=CONFIRM_BUDGET|answers = ctx\.resume_inputs|ctx\.state\[budget\.AUTH_KEY\]
+          = auth|edges=\[\(START, agree_budget|^AUTH_KEY = |^def parse\(|^def load\(|^def allows\(
+        highlightLabel: '`agree_budget` is the new first node: it asks, parses, reads back, and only after
+          the second answer stores `authorization` in session state. `budget.py` holds the sentence and the
+          two numbers the guard compares.'
+      - kind: turn
+        id: turn
+        items:
+        - text: Ask for the same thing as every chapter. The picker still reads memory for the rest.
+          say: Get me and Sam two tickets to the Amsterdam show.
+          in: agent
+        - text: 'The run stops and asks. Answer in the **`Enter your response...`** box on the `adk_request_input`
+            event — not the chat box, which would start a second run from the top.
 
-  - id: c
-    label: Once
-    headline: Why a retry cannot buy twice
-    body: c-retry.md
-    exercises:
-      run:
-        title: Read the retry out of the run you just did
-        needs: The session from 5b, with its one order. No new run; nothing is reset.
-        intro: >
-          In 5b you armed **BREAK THE NEXT PURCHASE** before waking the run, so the venue
-          committed the order and then failed the response. The tool retried once with the
-          same key. This card is where you read that off the records.
-        apps: [agent, venue]
-        tasks:
-          - kind: files
-            id: files
-            open: agent/concert/tools.py
-            stage: 5
-            compare: 4
-            only: [agent/concert/]
-            highlight: '^def purchase\(|key = hashlib\.sha256\(|headers=\{"Idempotency-Key": key\}|while attempts < 2|int\(result\.get\("status"\) or 0\) >= 500|retrying with the same key|"attempts": attempts, "idempotency_key": key'
-            highlightLabel: '`purchase` derives one key from the session and the request, sends it as `Idempotency-Key`, and retries once with the **same** key when the venue answers 5xx. The venue recognises the key and returns the original order.'
-          - kind: turn
-            id: turn
-            items:
-              - text: >
-                  Open the last `purchase` response in **Events**: `attempts: 2`,
-                  `duplicate: true`, one `idempotency_key`, and one `ord_…` id.
-                look: agent
-              - text: >
-                  Then the venue's activity feed: `COMMITTED, then failed the response
-                  (hang-once)`, and right after it `duplicate suppressed — returned ord_…`,
-                  the same id. **Tickets bought** says 1.
-                look: venue
-    expect:
-      - "The `purchase` response: `attempts: 2`, `duplicate: true`, `idempotency_key: …`, and the order id the venue shows."
-      - "The venue's activity feed: `… COMMITTED, then failed the response (hang-once)`, then `duplicate suppressed — returned ord_…`. One order, still `2× section C · 190`."
-    checks:
-      - id: retry
-        label: Two attempts, one order
-        probe: python3 -m workbench.probe retry
-        hint: Press BREAK THE NEXT PURCHASE **before** SKIP THE WAIT and Resume. "Last purchase took one attempt" means the fault was not armed when it bought — the venue panel says "rigged to fail" while it is armed. Two orders means two different keys, which this code cannot produce — check that chapter 5 is the loaded code.
-      - id: one
-        label: Exactly one order since this session started
-        probe: python3 -m workbench.probe orders --since-session --count 1
-        hint: Expected after the resume. Zero orders means the run has not resumed yet, or it refused — read the buyer's last message. More than one means an old order survived the reset — press **Reset the venue** above and start again from the new session.
-      - id: attempts
-        label: The purchase response says how many attempts it took
-        probe: python3 -m workbench.probe response purchase --contains attempts --current
-        hint: Every `purchase` response carries `attempts`, even a refused one. Missing means no purchase was made in this session yet — Resume current task after SKIP THE WAIT.
+            '
+          answer: Two tickets, up to $250 each.
+          in: agent
+        - text: It reads the numbers back on a second event. Confirm in **that** event's box.
+          answer: Yes, that's right.
+          in: agent
+        - text: 'Open the **State** tab. `authorization` is there with your sentence and the two numbers. Then
+            watch the log: `pick_show` reads memory and takes the Saturday, `queue_up` takes one ticket at
+            #14,203, `check_front` pauses.
+
+            '
+        - text: Look at the venue panel. One ticket in line. Nothing bought.
+          look: venue
+  checks:
+  - id: asked
+    label: The graph started at `agree_budget`, in this session
+    probe: python3 -m workbench.probe nodes agree_budget --current
+    hint: Load chapter 5 above, start a new session in the ADK web UI, and send the first message. If `agree_budget`
+      never appears, the agent is still running chapter 4's code — press **Load chapter 5** and restart the
+      agent.
+  - id: answered
+    label: You answered a question in the event's own box
+    probe: python3 -m workbench.probe pending --answered --current
+    hint: Type the budget into the box on the `adk_request_input` event, not the chat box at the bottom. If
+      the same question appears twice, a message went to the chat box and started a second run — start a new
+      session and begin again.
+  - id: authorized
+    label: '`authorization` is confirmed for this task'
+    probe: python3 -m workbench.probe authorization --confirmed
+    hint: It is stored only after you confirm the read-back. Answer "Yes, that's right." in the second question's
+      box. "Read back, not confirmed yet" means the second answer has not landed.
+  - id: parked
+    label: The task is paused on the queue, not on you
+    probe: python3 -m workbench.probe task --kind queue
+    hint: 'After the confirmation the graph should pick, queue and pause by itself. If it is still "waiting
+      for you", answer the open question in its box. If nothing is paused and there is no ticket, the venue
+      was reset under it — start a new session. Once 5B resumes and buys, this row stops passing: the task
+      is no longer paused, which is the point of 5B.'
+  - id: nothing-bought
+    label: No order yet for this task
+    probe: python3 -m workbench.probe orders --since-session --count 0
+    hint: 'Nothing should be bought in this section. An order here means the queue was skipped and the run
+      resumed early — reset the venue with **Load chapter 5** and start a new session. After 5B this row goes
+      red on purpose: the same session now has its one order.'
+- id: b
+  label: Guard
+  headline: Re-read the world before money moves
+  body: b-world.md
+  expect:
+  - 'After **Prepare the changing-world scenario**: section A is sold out for this task’s show, the next order
+    is armed to commit then return 503, and this ticket is at the front. No purchase has run yet.'
+  - 'After **Resume current task**: check_front finds the front. The buyer tries purchase for A; the guard
+    returns reason: stale_plan and actually_available: 0 before the order endpoint is called. The model may
+    make extra read calls; the refusal and final order are the evidence to look for.'
+  - Then `get_seatmap`, then `purchase(ms-ams-01, C, 2)` — section C, $95 a seat, inside $250, not the upper
+    bowl. One breakfast message, one `remember()`.
+  - 'The venue panel: **One order, exactly as intended** — `2× section C · 190`. The task card: the last order,
+    and nothing paused.'
+  - 'The second `purchase` response carries `attempts: 2` and `duplicate: true`: the armed fault fired on the
+    order that went through, and the retry got the same order back. Read in 5c.'
+  exercises:
+    run:
+      title: Change the world while it waits
+      needs: 'The task you started in 5a, still parked in the queue with its authorization confirmed. If the
+        task card says *no task yet* or the venue shows nobody in line, go back to **5a** and run it; loading
+        a chapter wipes the previous task.
+
+        '
+      intro: 'Same session, same task, same ticket. Nothing is reloaded here.
+
+        '
+      apps:
+      - agent
+      - venue
+      tasks:
+      - kind: files
+        id: files
+        open: agent/concert/fence.py
+        stage: 5
+        compare: 4
+        only:
+        - agent/concert/
+        highlight: '^def refresh_before_purchase|if tool\.name != "purchase"|live = venue\.get\(f"/events/\{event_id\}/seatmap"\)|"reason":
+          "stale_plan"|"believed_available"|"actually_available"|before_tool_callback=refresh_before_purchase'
+        highlightLabel: '`refresh_before_purchase` runs in the instant before every `purchase`. It re-reads
+          the live seat map and returns a dict with a `reason` when the plan no longer fits — and a returned
+          dict short-circuits the tool, so the venue is never called.'
+      - kind: turn
+        id: turn
+        items:
+        - text: 'Prepare one scenario: sell out A for this task’s show, arm a failure **after the order commits**,
+            and move this ticket to the front. Each completed change appears below. Then press **Resume current
+            task** once.'
+          scenario: purchase
+        - text: 'Read **Events** in order: `purchase` for section A, the guard''s `stale_plan` refusal, `get_seatmap`,
+            then `purchase` for section C. Open the first `purchase` response: that is the guard. (The second
+            one says `attempts: 2`; 5c is about that.)
+
+            '
+          look: agent
+        - text: 'The venue panel: one order, section C, two seats, $190.'
+          look: venue
+  checks:
+  - id: stale
+    label: The guard refused the old plan with `stale_plan`
+    probe: python3 -m workbench.probe guard stale_plan
+    hint: Prepare the scenario while the task is paused on the queue, then Resume once. If section A was still
+      available when purchase ran, preparation came too late. Reload chapter 5 and repeat 5A–5B. Keep the same
+      session in 5C.
+  - id: order
+    label: One order for this task, section C, two seats
+    probe: python3 -m workbench.probe orders --since-session --count 1 --section C --qty 2
+    hint: Zero orders means the buyer has not completed; read its last message. More than one order means another
+      purchase task also ran. Section B means the preference was not followed. Use the same session through
+      5A–5C.
+  - id: remembered
+    label: '`last_order` is in this session''s state'
+    probe: python3 -m workbench.probe state last_order --current
+    hint: Set by the purchase tool once the venue answers without an error. If the order exists on the venue
+      but this is missing, the agent was restarted mid-run — check the agent's log.
+- id: c
+  label: Once
+  headline: Why a retry cannot buy twice
+  body: c-retry.md
+  exercises:
+    run:
+      title: Explain the retry in the same purchase
+      needs: The purchase you just made in 5b. Do not start a new task.
+      intro: The scenario in 5b made the venue commit the order and then return 503. The purchase tool retried
+        once with the same key. Inspect that same run here; there is nothing to reset or send again.
+      apps:
+      - agent
+      - venue
+      tasks:
+      - kind: files
+        id: files
+        open: agent/concert/tools.py
+        stage: 5
+        compare: 4
+        only:
+        - agent/concert/
+        highlight: '^def purchase\(|key = hashlib\.sha256\(|headers=\{"Idempotency-Key": key\}|while attempts
+          < 2|int\(result\.get\("status"\) or 0\) >= 500|retrying with the same key|"attempts": attempts, "idempotency_key":
+          key'
+        highlightLabel: '`purchase` derives one key from the session and the request, sends it as `Idempotency-Key`,
+          and retries once with the **same** key when the venue answers 5xx. The venue recognises the key and
+          returns the original order.'
+      - kind: turn
+        id: turn
+        items:
+        - text: 'Open the last `purchase` response in **Events**: `attempts: 2`, `duplicate: true`, one `idempotency_key`,
+            and one `ord_…` id.
+
+            '
+          look: agent
+        - text: 'Then the venue''s activity feed: `COMMITTED, then failed the response (hang-once)`, and right
+            after it `duplicate suppressed — returned ord_…`, the same id. **Tickets bought** says 1.
+
+            '
+          look: venue
+  expect:
+  - 'The `purchase` response: `attempts: 2`, `duplicate: true`, `idempotency_key: …`, and the order id the
+    venue shows.'
+  - 'The venue''s activity feed: `… COMMITTED, then failed the response (hang-once)`, then `duplicate suppressed
+    — returned ord_…`. One order, still `2× section C · 190`.'
+  checks:
+  - id: retry
+    label: Two attempts, one order
+    probe: python3 -m workbench.probe retry
+    hint: The combined preparation in 5B must finish before Resume. One attempt means the fault was not armed
+      when the purchase happened. Inspect the venue feed for the commit-then-fail line and the returned order
+      id.
+  - id: one
+    label: Exactly one order since this session started
+    probe: python3 -m workbench.probe orders --since-session --count 1
+    hint: Expected after the resume. Zero orders means the run has not resumed yet, or it refused — read the
+      buyer's last message. More than one means an old order survived the reset — press **Reset the venue**
+      above and start again from the new session.
+  - id: attempts
+    label: The purchase response says how many attempts it took
+    probe: python3 -m workbench.probe response purchase --contains attempts --current
+    hint: Open the successful purchase response, not the guard’s refusal. The successful response includes
+      attempts. If it is missing, the buyer has not completed in this session yet.

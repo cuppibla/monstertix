@@ -48,10 +48,10 @@ function Steps() {
   const prepared = (exercise: Exercise) => exercise.tasks.some((task) => task.kind === "prepare");
   return (
     <div className="px-4 py-3">
-      {cards.map(({ id, exercise }, index) => (
-        <section key={id} className="mb-7 border-b pb-6 last:border-b-0" style={{ borderColor: "var(--hairline)" }}>
+      {cards.map(({ id, exercise }) => {
+        const content = <section className="mb-7 border-b pb-6 last:border-b-0" style={{ borderColor: "var(--hairline)" }}>
           <div className="kicker" style={{ color: "var(--accent)" }}>
-            {t("Your turn")}{cards.length > 1 ? ` · ${index + 1} / ${cards.length}` : ""}
+            {t("Your turn")}
           </div>
           {exercise.title && <h3 className="mt-1 text-[0.95rem] font-semibold leading-snug">{exercise.title}</h3>}
           {exercise.needs && (
@@ -67,8 +67,11 @@ function Steps() {
               <TaskView key={task.id} task={task} slug={current.slug} color="var(--accent)" prepared={prepared(exercise)} compact />
             ))}
           </div>
-        </section>
-      ))}
+        </section>;
+        return exercise.optional
+          ? <details key={id} className="mb-5"><summary className="cursor-pointer text-sm">Optional · {exercise.title}</summary>{content}</details>
+          : <div key={id}>{content}</div>;
+      })}
     </div>
   );
 }
@@ -135,7 +138,7 @@ export function AgentDrawer() {
           <ServiceLog name="agent" command={svc?.command} />
         </div>
       )}
-      <div className="flex min-h-0 flex-1">
+      <div className="drawer__body flex min-h-0 flex-1">
         {steps && (
           <div className="drawer__steps quiet-scroll w-[26rem] shrink-0 overflow-y-auto border-r"
                style={{ borderColor: "var(--hairline)", background: "var(--stage)" }}>

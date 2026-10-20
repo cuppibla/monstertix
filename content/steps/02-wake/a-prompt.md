@@ -1,9 +1,7 @@
 The agent from Chapter 1 answers well. Ask it about Amsterdam and it reads
 what it knows about you, searches the tour, and names the Saturday show. Then
 the presale opens, the queue starts moving, and this agent does nothing,
-because nobody typed. The first fix everyone reaches for is to tell it, in its
-instruction, to keep checking on its own. This section is where you try that
-and watch it fail, so that the real fix in the next section lands.
+because nobody typed. Ask it to keep checking in your one request, then watch what happens after the reply. The next section supplies the missing caller.
 
 ## What one run is
 
@@ -45,6 +43,9 @@ Runner ran the function, handed the JSON back, and the model wrote a sentence
 about it.
 :::
 
+A request to keep checking can influence what the model says. After this invocation ends, an external request still has to start the next one. Keep that observation in mind as you read the Runner code next.
+
+:::optional title="Try rewriting the instruction" minutes=5 needs="chapter 2 loaded"
 ## So tell it not to sleep
 
 What would you do to make it check on its own? Try the thing most people
@@ -108,6 +109,8 @@ ask for a tool while an invocation is open; the Runner runs it, the model
 answers, the invocation closes. "In the background" has no mechanism behind
 it. When you are done, press **Put the original file back** so `root_agent`
 uses `INSTRUCTION` again.
+:::
+
 :::
 
 :::checkpoint

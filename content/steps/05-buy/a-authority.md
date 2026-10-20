@@ -73,7 +73,7 @@ task** button was disabled. That is the whole distinction, made visible:
 
 | Interrupt id | Who may answer | Answer |
 |---|---|---|
-| `budget:ask`, `budget:confirm` | a person, in the chat | the sentence they typed, as `{"result": …}` |
+| `budget:ask`, `budget:confirm` | a person, in the event’s response box | the sentence they typed, as `{"result": …}` |
 | `queue:wait` | anything: the panel, the MonsterTix server, Cloud Scheduler | `{"checked": true}` — "look again" |
 
 The ids are stable strings on purpose. Whoever wakes the run reads the prefix
@@ -90,7 +90,7 @@ Three things make `agree_budget` work, and you need all three:
 
 | | |
 |---|---|
-| `@node(rerun_on_resume=True)` | the node runs again each time the graph is woken, instead of being skipped as already done |
+| `@node(rerun_on_resume=True)` | when this node is paused on a question and its answer arrives, the function runs again to read it. After authorization is stored and the node finishes, later queue resumes reuse its record |
 | a **stable** `interrupt_id` | the default is a fresh UUID per run, so there would be nothing to look the answer up by |
 | `ctx.resume_inputs[id]` | where the answer lands. **Not** the return value of `RequestInput` — ADK iterates a node rather than sending into it |
 

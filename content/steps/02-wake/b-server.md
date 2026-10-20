@@ -81,7 +81,11 @@ Read that last line. The server is running and the agent is loaded, and
 nothing is happening. Being callable and being called are two different
 things.
 
-Then you call it. The MonsterTix page is a chat window that posts to `/wake`;
+:::optional title="Call it manually before using the clock" minutes=2 needs="MonsterTix running"
+:::exercise id="manual"
+:::
+
+The MonsterTix page is a chat window that posts to `/wake`;
 when you press send, the log shows the Runner at work:
 
 ```
@@ -92,15 +96,13 @@ when you press send, the log shows the Runner at work:
                   Dome …
 ```
 
-Same agent, same tools, same answer as the ADK web UI gave. Only the Runner
-is yours now. And notice who the caller was: you. The next section replaces
-you with a clock.
+Same agent, same tools; now your server owns the Runner. The next section uses a clock as the caller.
+:::
 :::
 
 :::key
 The trigger is a server that listens, with a Runner behind it. It can run the
-agent, and it does nothing until something calls it. In this section that
-something was you.
+agent, and it does nothing until something calls it. The next section sends that request from a clock.
 :::
 
 :::optional title="The page, and the other routes" minutes=5 needs="MonsterTix running"
@@ -132,8 +134,7 @@ Chapter 6.
 show on its own now?**
 :::answer
 No. A server that listens is only half of it. Nothing happens on `/wake`
-until something sends a request there, and right now the only thing that
-has is you, from the page. The agent cannot send that request to itself: once
+until something sends a request there. The optional manual call uses the page; otherwise no call has arrived yet. The agent cannot send that request to itself: once
 the Runner returns, no code of its own is running. The missing half is the
 next section.
 :::

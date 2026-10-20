@@ -1,101 +1,81 @@
-# Guided MonsterTix lab
+# Balanced hands-on MonsterTix lab
 
-The core is six pages, following one ticket-buying story. A fresh experiment is
-created at each chapter boundary; chapters 4 and 5 each preserve their own task
-through every pause and resume. The course does not pretend that switching
-solution stages carries a task forward.
+The default course uses the illustrated reading and real ADK Web exercises.
+Learners type requests, answer the budget questions, inspect Events and State,
+and deliberately kill and resume a task. Historical guided-course receipts do
+not replace these actions or mark the chapter rail complete.
 
 ## Teaching sequence
 
-| Chapter | Learner action | Essential reading | Expand only when needed |
+| Chapter | Main experiment | Keep in the core | Optional |
 |---|---|---|---|
-| Meet | Prepare once; read the model reply | You and Sam need two tickets; a queue position is not seconds | Agent / Runner / Venue; original architecture and source |
-| Wake | Ask once; schedule one check | Prompt → no future run; external caller → Runner → invocation | Standalone clock and `/wake` implementation |
-| Memory | Read one run; save aisle seats; create session B | Session DB events/state; Memory Service facts; `user:prefs` is separate | Raw records, artifact lifetime, SQL, read-only compaction |
-| Resume | Start task; actually kill; restart and resume | A Workflow names the steps; completed outputs are reused; waiting `check_front` runs again | Node records, `rerun_on_resume`, crash gap, read-only LRFT comparison |
-| Buy | Answer budget and confirmation; prepare faults; resume | Authority → guard → same-key retry → exactly one order | Full function responses, idempotency derivation, business errors |
-| Cloud | Watch an instructor's prepared deployment | External caller reaches a saved cloud task | Independent deploy / task / Scheduler / logs / cleanup |
+| Meet | Explore the venue, prepare, ask in ADK Web | You and Sam need two tickets; queue position means people ahead | Full source |
+| Wake | Ask once, start the server, fire one 10-second clock | Agent / Runner / caller; the agent does not wake itself | Instruction variants, a manual server call, a repeating clock |
+| Memory | Inspect session A, save one preference, recall it in session B | Session DB, Memory Service, state lifetimes, diagrams and code | SQL, full artifact inspection, read-only compaction |
+| Resume | Start a task, kill, restart, move its ticket, resume once | Workflow, completed outputs vs interrupted nodes, live queue | Detailed records, crash gap and read-only LRFT comparison |
+| Buy | Answer and confirm a budget; prepare one scenario; resume | Authorization, live guard, commit-then-503, same-key retry | Venue implementation |
+| Cloud | Instructor demonstration of an existing cloud task | Architecture, source, exact task and trigger | Independent deployment and cleanup |
 
-The buy preparation button performs three visible, sequential operations:
-section A sells out for the task's show; the venue arms a commit-then-503
-response; only this queue ticket moves to the front. It does not resume the
-agent. Failure stops the sequence. A later resume answers `queue:wait` in the
-bound session. Budget answers always come from the learner's form, addressed
-to the exact pending `budget:*` interrupt.
+Each chapter has a focused experiment with reading sections around it. Sections
+are not separate experiments. In particular, Memory reuses session A until the
+one switch to B; Resume only needs one resume after the restart; Buy uses one
+purchase across all three sections. Code viewers and original diagrams remain
+visible. Further implementation reading is collapsed where it interrupts the
+main story. Diagnostic checks are available under Troubleshooting.
 
-The third chapter keeps a side-by-side view of actual A/B recall and seat map
-responses. The memory diff shows the newly written lines. Raw events and state
-are available underneath. No successful memory write is inferred from “noted.”
+## Interface
 
-## What changed in the interface
+- `/step/:chapter/:part` opens the actual section. Chapter links open its first
+  section. `/study/...` remains a compatible route.
+- The live venue stays on the left. ADK Web opens in a drawer with that section's
+  numbered actions and copy buttons beside the real development UI.
+- On narrow screens the instructions stack above ADK instead of disappearing.
+- The chapter rail uses chapter numbers, not receipts from earlier runs.
+- Chapter loading is explicit: it replaces the solution stage and resets live
+  sessions, memory seed and venue. Navigation itself does not load or reset.
+- `/step/cloud` is the instructor demonstration. Its links expose the full
+  deployment extension.
 
-- Six core pages replace 17 mandatory a/b/c pages. The chapter rail shows earned
-  receipts; reading ahead never earns completion.
-- One next-action card replaces scattered preparation and instruction lists.
-  It shows the expected visible result and any error at that action.
-- The live venue, inventory, queue and orders remain. A compact task card adds
-  the bound session, invocation count and queue position. Advanced venue
-  controls are collapsed to avoid accidental independent scenario changes.
-- The existing MonsterTix application remains available. The core uses the
-  guided controls; the original application is useful in detailed study.
-- The ADK drawer is an inspection tool, bound to the current experiment's exact
-  session. It no longer duplicates a second full set of core instructions.
-- Historical receipts and archived records remain readable after loading
-  another chapter. They are labelled as historical, separate from the live venue.
-- Old `/step/:chapter/:part` links open the corresponding single core page.
-  The unchanged detailed exercises remain reachable under `/study/:chapter/:part`.
+## Combined purchase preparation
 
-## Evidence and recovery
+One button sells out A for the task's exact show, arms the mock venue's
+commit-then-503 fault, and moves that task's exact queue ticket to the front.
+Each completed operation appears below the button. Failure stops the sequence;
+it never resumes the agent. The learner presses Resume separately.
 
-`workbench/services/learning.py` owns the coordination, not agent decisions.
-It uses the existing solution packages and real ADK `/run` calls. Actions carry
-an attempt ID, and person answers also carry an interrupt ID. A stale page
-cannot answer a different task. Only one operation runs at a time.
-
-`runs/learning.json` stores attempts and earned receipts. Each receipt contains
-its session IDs, stage, code fingerprint, timestamp and observed checks. Raw
-sessions and memory are saved under `runs/learning-evidence/` before stage
-loading clears live data. Receipts survive workbench restarts. “Start a fresh
-experiment” explicitly resets live state and retains completed receipts.
-
-The local one-shot timer is intentionally not durable scheduling. A workbench
-restart before it fires marks it interrupted and offers a new clock action.
-Restarting an agent service reuses its session; it does not answer a person or
-start a new purchase. Missing evidence stays missing rather than being filled
-with an expected sample value.
-
-A Workflow resume can retain the same ADK invocation ID. The invocation counter
-counts distinct recorded IDs, not HTTP requests or graph edges. For the Wake
-experiment, a new prompt from the clock does create another invocation.
+The helper checks stage 5, a queue pause, a ticket and show, confirmed
+session-scoped authorization, and no existing order before making changes.
+Budget answers still come from the learner in ADK Web's interrupt response
+boxes. A new chat message is not an interrupt response.
 
 ## Validation
 
-After setup, run the ordinary suite with `./tests/run.sh`. For the frontend:
+Use an isolated copy and distinct ports for destructive rehearsal. Do not aim a
+walk or test fixture at a learner's active venue or session database.
 
 ```bash
 cd web
 npm run check
 npm run build
+node --experimental-strip-types --test tests/purchaseScenario.test.mjs
+cd ..
+./tests/run.sh
+python scripts/walk-hands-on.py \
+  --url http://127.0.0.1:59073 --output runs/hands-on-walk.json
 ```
 
-To rehearse the guided route, start a separate local workbench with distinct
-`WORKBENCH_PORT`, `AGENT_PORT`, `VENUE_PORT` and `TRIGGER_PORT`. Also set
-`VENUE_URL` to that local venue. Do not point a rehearsal at a class in progress.
+The real-model walk calls the same stage, ADK, clock, venue and resume APIs as
+the UI. It resets its target and verifies all five local chapters. It checks
+cross-session recall, a ticket surviving a killed process, refusal to resume a
+human question, the stale-plan refusal, two purchase attempts and one order.
+Browser rehearsal additionally covers actual ADK entry/response boxes, the
+combined scenario button, copy/navigation controls and responsive layout.
 
-```bash
-uv run --python .venv/bin/python python scripts/walk-guided.py \
-  --url http://127.0.0.1:58873
-```
+The older `walk-guided.py` and receipt service remain for compatibility, but
+are not the default learning route. The main lab does not auto-send the
+learner's prompts or substitute old evidence for a new experiment.
 
-The walk resets that workbench's live data, calls the real model for all five
-local chapters, checks each receipt, and confirms earlier raw records remain
-readable after stage changes. It writes `runs/guided-walk.json` and deliberately
-does not dispatch cloud jobs. Fixture budget answers apply only to the simulated
-local venue. The learner interface never auto-answers those questions.
-
-Before a class, separately rehearse the instructor's cloud deployment. Configure
-`AGENT_SERVICE_URL`, the project/region and optionally `PRESALE_TOPIC` (the
-existing job name). Inspect the exact cloud session; confirm its budget on the
-cloud page; advance that venue's ticket; dispatch the existing job. Check both
-Cloud Run logs and the final order. Scheduler accepting a dispatch is not proof
-that the task completed. This example assumes one active cloud task.
+Cloud deployment requires separate rehearsal with configured resources. A
+Scheduler dispatch being accepted is not proof of task completion; inspect the
+cloud session, Cloud Run logs and final venue order. This local revision does
+not deploy or claim to verify a remote cloud task.
