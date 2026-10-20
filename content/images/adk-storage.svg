@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 420" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="420" viewBox="0 0 920 420" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
   <title id="t">ADK writes the session into sessions.db and saved files into artifacts/</title>
   <desc id="d">The adk web process sends every message, tool call and state change to sessions.db through the session service, and files the agent saves to the artifacts folder through the artifact service. Both stay on disk when the process stops.</desc>
   <defs>
