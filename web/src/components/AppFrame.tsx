@@ -41,6 +41,13 @@ export function AppFrame({ id, version = 0, onReload }: {
   const frame = useRef<HTMLIFrameElement>(null);
   const [generation, setGeneration] = useState(0);
   const wasUp = useRef<boolean | null>(null);
+  // The src is fixed for the life of one frame. If it followed `where`, the
+  // next re-render after the dev UI put `?session=` in its URL would set a new
+  // src, which navigates the frame: a reload that cancels the run in flight
+  // (ADK logs "Root node concert was cancelled"). A fresh frame (new key)
+  // starts from wherever the last one had got to.
+  const [src, setSrc] = useState(() => frameHref(id));
+  useEffect(() => setSrc(frameHref(id)), [id, version, generation]);
 
   // Remember where the frame had got to (the dev UI keeps its session in the URL).
   useEffect(() => {
@@ -102,7 +109,7 @@ export function AppFrame({ id, version = 0, onReload }: {
     <iframe
       key={`${id}-${version}-${generation}`}
       ref={frame}
-      src={frameHref(id)}
+      src={src}
       title={t(app.label)}
       allow="autoplay; clipboard-write"
       className="block h-full w-full border-0"

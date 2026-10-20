@@ -3,23 +3,82 @@ import { useEffect, useState } from "react";
 import { isUp, useBench } from "../lib/bench";
 import { APPS, AppFrame, frameHref } from "./AppFrame";
 import { ServiceControls, ServiceLog } from "./ServiceControls";
+import { Inline } from "./Inline";
+import { Turn } from "./Turn";
 import { t } from "../i18n";
 
 /* The ADK web UI, in a drawer from the right. It is the development window
    into a run (chat, Events, State, the graph), not part of the world, so it
    is not in the left column: the button at the top right opens it over the
    reading, and Esc or × puts it away. The frame is kept while the drawer is
-   closed, so the conversation is where you left it. */
+   closed, so the conversation is where you left it.
+
+   The drawer covers the reading, so the section's steps can ride along: a
+   column on its left with every "Your turn" list of the section, buttons
+   included. **Steps** at the top shows or hides it. */
+
+function stored(key: string, fallback: boolean): boolean {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value === "true";
+  } catch {
+    return fallback;
+  }
+}
+
+/* The section's numbered steps, card by card. */
+function Steps() {
+  const { current } = useBench();
+  const cards = (current?.exercises ?? [])
+    .map(({ id, exercise }) => ({ id, exercise, turns: exercise.tasks.filter((task) => task.kind === "turn") }))
+    .filter((card) => card.turns.length > 0);
+  if (!current || cards.length === 0) {
+    return (
+      <p className="px-4 py-6 text-[0.8rem]" style={{ color: "var(--fg-faint)" }}>
+        {t("This section has no numbered steps. The reading is behind the drawer.")}
+      </p>
+    );
+  }
+  return (
+    <div className="px-4 py-3">
+      {cards.map(({ id, exercise, turns }) => (
+        <section key={id} className="mb-6">
+          <div className="kicker" style={{ color: "var(--accent)" }}>{t("Your turn")}</div>
+          {exercise.title && <h3 className="mt-1 text-[0.95rem] font-semibold leading-snug">{exercise.title}</h3>}
+          {exercise.intro && (
+            <p className="mt-1 text-[0.8rem]" style={{ color: "var(--fg-muted)" }}><Inline text={exercise.intro.trim()} /></p>
+          )}
+          {turns.map((task) => (
+            <div key={task.id} className="mt-2 text-[0.86rem]">
+              {task.title && <h4 className="text-[0.88rem] font-semibold">{task.title}</h4>}
+              <Turn items={task.items ?? []} slug={current.slug} task={task.id} />
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
 
 export function AgentDrawer() {
   const { service, drawerOpen, setDrawerOpen } = useBench();
   const [version, setVersion] = useState(0);
   const [logOpen, setLogOpen] = useState(false);
   const [opened, setOpened] = useState(false);
+  const [steps, setStepsState] = useState(() => stored("monstertix.drawer.steps", true));
   const svc = service(APPS.agent.service);
   const up = isUp(svc);
 
   if (drawerOpen && !opened) setOpened(true);
+
+  const setSteps = (on: boolean) => {
+    setStepsState(on);
+    try {
+      localStorage.setItem("monstertix.drawer.steps", String(on));
+    } catch {
+      /* the page works without it */
+    }
+  };
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -33,7 +92,7 @@ export function AgentDrawer() {
   if (!opened) return null;
 
   return (
-    <aside className="drawer" data-open={drawerOpen} aria-hidden={!drawerOpen} aria-label={t("ADK web UI")}>
+    <aside className="drawer" data-open={drawerOpen} data-steps={steps} aria-hidden={!drawerOpen} aria-label={t("ADK web UI")}>
       <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--hairline)" }}>
         <span className="flex items-center gap-2 text-[0.82rem] font-semibold">
           <span className="dot" style={{ width: 6, height: 6, background: up ? "var(--ok)" : "var(--fg-faint)" }} />
@@ -42,6 +101,11 @@ export function AgentDrawer() {
         <span className="hidden text-[0.72rem] sm:inline" style={{ color: "var(--fg-faint)" }}>
           {t("the development window into a run")}
         </span>
+        <button type="button" className="btn" aria-pressed={steps} onClick={() => setSteps(!steps)}
+                style={steps ? { color: "var(--fg)", borderColor: "var(--fg-faint)" } : undefined}
+                title={t("Show this section's steps beside the dev UI")}>
+          {steps ? t("Hide steps") : t("Show steps")}
+        </button>
         <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
           {up && (
             <>
@@ -58,8 +122,16 @@ export function AgentDrawer() {
           <ServiceLog name="agent" command={svc?.command} />
         </div>
       )}
-      <div className="relative min-h-0 flex-1">
-        <AppFrame id="agent" version={version} />
+      <div className="flex min-h-0 flex-1">
+        {steps && (
+          <div className="drawer__steps quiet-scroll w-[22rem] shrink-0 overflow-y-auto border-r"
+               style={{ borderColor: "var(--hairline)", background: "var(--stage)" }}>
+            <Steps />
+          </div>
+        )}
+        <div className="relative min-h-0 min-w-0 flex-1">
+          <AppFrame id="agent" version={version} />
+        </div>
       </div>
     </aside>
   );

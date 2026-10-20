@@ -420,6 +420,8 @@ img { max-width: 100%; }
   transition: transform 0.22s ease;
 }
 .drawer[data-open="true"] { transform: none; }
+/* With the section's steps riding along, the drawer needs their column too. */
+.drawer[data-steps="true"] { width: min(80vw, 86rem); }
 
 /* Narrow screens: the services become a strip above the step. */
 @media (max-width: 900px) {
@@ -432,7 +434,8 @@ img { max-width: 100%; }
   }
   .bench[data-rail="wide"] .bench__rail { height: 70vh; }
   .bench__main { padding-inline: 1rem; }
-  .drawer { width: 100vw; }
+  .drawer, .drawer[data-steps="true"] { width: 100vw; }
+  .drawer__steps { display: none; }
 }
 
 .dot {

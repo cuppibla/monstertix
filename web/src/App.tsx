@@ -62,7 +62,7 @@ function worldTabFor(part: StepFull["parts"][number]): WorldTab | null {
 function StepPage({ course, lang }: { course: CoursePayload; lang: string }) {
   const { slug = "", part: partParam } = useParams();
   const navigate = useNavigate();
-  const { setRailTab } = useBench();
+  const { setRailTab, setCurrent } = useBench();
   const [step, setStep] = useState<StepFull | null>(null);
   const known = course.steps.some((s) => s.slug === slug);
   const moved = !known && MOVED[slug] && course.steps.some((s) => s.slug === MOVED[slug].split("/")[0]) ? MOVED[slug] : "";
@@ -89,6 +89,16 @@ function StepPage({ course, lang }: { course: CoursePayload; lang: string }) {
     const tab = worldTabFor(part);
     if (tab) setRailTab(tab);
   }, [part, setRailTab]);
+
+  // The drawer shows this section's steps beside the dev UI.
+  useEffect(() => {
+    if (!step || !part) return;
+    setCurrent({
+      slug: step.slug,
+      exercises: Object.entries(part.exercises ?? {}).map(([id, exercise]) => ({ id, exercise })),
+    });
+    return () => setCurrent(null);
+  }, [step, part, setCurrent]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {

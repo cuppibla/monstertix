@@ -4,10 +4,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 
-import { api, type PaneTab, type Service, type Stage } from "./api";
+import { api, type Exercise, type PaneTab, type Service, type Stage } from "./api";
 
 /** The apps in the left column: the world the agent acts on. */
 export type WorldTab = Exclude<PaneTab, "agent">;
+
+/** The section on screen: its slug and its "Your turn" cards, in order. */
+export type Current = { slug: string; exercises: { id: string; exercise: Exercise }[] };
 
 type Bench = {
   services: Service[];
@@ -25,6 +28,9 @@ type Bench = {
   setDrawerOpen: (open: boolean) => void;
   /** Bring an app forward: the venue and MonsterTix in the world column, the dev UI in its drawer. */
   focus: (tab: PaneTab) => void;
+  /** The section on screen, so the drawer can show its steps beside the dev UI. */
+  current: Current | null;
+  setCurrent: (current: Current | null) => void;
   /** Bumped when something reloads code or restarts a process, so frames and files re-read. */
   epoch: number;
   bump: () => void;
@@ -54,6 +60,7 @@ export function BenchProvider({ children }: { children: ReactNode }) {
   const [railOpen, setRailOpenState] = useState(() => stored("monstertix.rail", "open") === "open");
   const [railTab, setRailTab] = useState<WorldTab>("venue");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [current, setCurrent] = useState<Current | null>(null);
   const [epoch, setEpoch] = useState(0);
   const inFlight = useRef(false);
 
@@ -105,6 +112,8 @@ export function BenchProvider({ children }: { children: ReactNode }) {
     drawerOpen,
     setDrawerOpen,
     focus,
+    current,
+    setCurrent,
     epoch,
     bump: () => setEpoch((n) => n + 1),
   };
