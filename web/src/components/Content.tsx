@@ -101,11 +101,14 @@ function Answer({ children }: { children: Block[] }) {
   );
 }
 
-function Figure({ src, caption }: { src?: string; caption: string }) {
+function Figure({ src, caption, example }: { src?: string; caption: string; example?: boolean }) {
   if (!src) return null;
   const url = /^(https?:)?\//.test(src) ? src : `/content-images/${src}`;
   return (
     <figure className="my-6">
+      {example && <div className="mb-2 text-xs font-semibold" style={{color:"var(--fg-muted)"}}>
+        Example screenshot · check the app panel for your live result
+      </div>}
       <img src={url} alt={caption} className="mx-auto rounded-2xl border" style={{ borderColor: "var(--hairline)" }} />
       {caption && <figcaption className="mt-2 text-center text-[0.8rem]" style={{ color: "var(--fg-faint)" }}>{caption}</figcaption>}
     </figure>
@@ -247,7 +250,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
           case "exercise":
             return <InlineExercise key={index} id={block.id}>{block.children}</InlineExercise>;
           case "figure":
-            return <Figure key={index} src={block.src} caption={block.caption} />;
+            return <Figure key={index} src={block.src} caption={block.caption} example={block.example} />;
           case "file":
             return <FileReveal key={index} path={block.path} label={block.label} />;
           case "console":

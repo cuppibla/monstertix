@@ -137,7 +137,10 @@ export function PromptLab({ slug, task, color }: { slug: string; task: Task; col
               </button>
             ))}
           </div>
-          <textarea value={text} rows={8} spellCheck={false}
+          <p className="mt-2 text-sm" style={{color: "var(--fg-muted)"}}>
+            Edit the text box below, then press Swap it in. The code viewer is read-only.
+          </p>
+          <textarea aria-label="Optional agent instruction" value={text} rows={8} spellCheck={false}
                     onChange={(e) => {
                       setText(e.target.value);
                       if (presets.some((p) => p.label === label && p.text !== e.target.value)) setLabel("");

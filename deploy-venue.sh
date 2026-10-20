@@ -24,6 +24,12 @@ echo "→ service   $SERVICE"
 echo "→ deploying to Cloud Run (1-2 min)..."
 echo ""
 
+BUILD_SA=$(gcloud builds get-default-service-account --project "$PROJECT")
+BUILD_SA="${BUILD_SA##*/}"
+[ -n "$BUILD_SA" ] || { echo "✗ Could not resolve the Cloud Build service account"; exit 1; }
+gcloud projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$BUILD_SA" \
+  --role=roles/run.builder --condition=None --quiet >/dev/null
+
 gcloud run deploy "$SERVICE" \
   --source . \
   --project "$PROJECT" \
@@ -38,7 +44,7 @@ gcloud run services add-iam-policy-binding "$SERVICE" \
   --region "$REGION" \
   --member="allUsers" \
   --role="roles/run.invoker" \
-  --quiet >/dev/null 2>&1 || true
+  --quiet >/dev/null
 
 URL=$(gcloud run services describe "$SERVICE" \
         --project "$PROJECT" --region "$REGION" --format='value(status.url)')
@@ -56,7 +62,8 @@ else
 fi
 
 echo ""
-echo "→ health    $(curl -s "$URL/health" || echo unreachable)"
+curl --fail --show-error --silent --max-time 30 "$URL/health" | \
+  python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("ok") is True, "Venue health is not ok"; print("→ health    ok")'
 echo ""
 echo "✓ venue deployed"
 echo "   panel     $URL/panel"

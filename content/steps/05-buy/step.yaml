@@ -54,11 +54,15 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: Ask for the same thing as every chapter. The picker still reads memory for the rest.
+        - text: >
+            In ADK Web, click **New Session** (the speech-bubble icon with `+` in the top toolbar).
+            **Copy** below only copies the message: paste it into the bottom chat box and press Send.
+            Loading chapter 5 alone does not start a task. Wait for the budget question to appear in Events.
           say: Get me and Sam two tickets to the Amsterdam show.
           in: agent
-        - text: 'The run stops and asks. Answer in the **`Enter your response...`** box on the `adk_request_input`
-            event — not the chat box, which would start a second run from the top.
+        - text: 'Find the new `adk_request_input` card asking **how many tickets and the most to pay for each**.
+            Enter the budget below into **that card’s response box** and send it. Unlike chapter 4’s queue
+            pause, this pause needs your answer. If you only see the preloaded conversation, complete step 1 first.
 
             '
           answer: Two tickets, up to $250 each.
@@ -154,13 +158,12 @@ parts:
             and move this ticket to the front. Each completed change appears below. Then press **Resume current
             task** once.'
           scenario: purchase
-        - text: 'Read **Events** in order: `purchase` for section A, the guard''s `stale_plan` refusal, `get_seatmap`,
-            then `purchase` for section C. Open the first `purchase` response: that is the guard. (The second
-            one says `attempts: 2`; 5c is about that.)
-
-            '
+        - text: '**After Resume finishes and an order appears**, open this task in ADK and read **Events** in order: `purchase` for section A, the guard''s `stale_plan` refusal, `get_seatmap`,
+            then `purchase` for section C. Click the first **✓ purchase** response, then **Info → {}** to read its JSON: that is the guard. (The second
+            one says `attempts: 2`; 5c is about that.) If Prepare is still disabled, finish 5a first; no purchase events exist yet.'
           look: agent
-        - text: 'The venue panel: one order, section C, two seats, $190.'
+          inspectTask: true
+        - text: '**After the purchase finishes**, the live Venue panel should show one order: section C, two seats, $190. A picture below is only an example; your actual result is on the left.'
           look: venue
   checks:
   - id: stale
@@ -187,9 +190,8 @@ parts:
   exercises:
     run:
       title: Explain the retry in the same purchase
-      needs: The purchase you just made in 5b. Do not start a new task.
-      intro: The scenario in 5b made the venue commit the order and then return 503. The purchase tool retried
-        once with the same key. Inspect that same run here; there is nothing to reset or send again.
+      needs: Finish 5b first. The live task must show an order. If it does not, follow the status card above; there is no purchase response to inspect yet.
+      intro: After 5b completes, inspect that same purchase here. The venue saved the order, then returned a 503 error. The tool retried once with the same key. This page explains the receipt; it does not run another purchase.
       apps:
       - agent
       - venue
@@ -210,11 +212,10 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: 'Open the last `purchase` response in **Events**: `attempts: 2`, `duplicate: true`, one `idempotency_key`,
-            and one `ord_…` id.
-
-            '
+        - text: 'Click **Open this task in ADK**. In **Events**, scroll to the completed purchase and click the last **✓ purchase**. In the **Info** panel, click **{}** (JSON) in its left toolbar. If you see a graph, switch to **{}**. Read `content → parts → 0 → functionResponse → response`.'
           look: agent
+          inspectTask: true
+        - text: 'Inside `response`: `attempts: 2` means two HTTP attempts; `duplicate: true` means the retry returned the existing order. Find `idempotency_key` and the `ord_…` ID. These are tool-response fields, not chat labels. If no order exists, finish 5b first.'
         - text: 'Then the venue''s activity feed: `COMMITTED, then failed the response (hang-once)`, and right
             after it `duplicate suppressed — returned ord_…`, the same id. **Tickets bought** says 1.
 

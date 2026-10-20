@@ -30,7 +30,7 @@ with.
 `get_fast_api_app` builds the session and artifact services from the same two
 URIs you have been passing to `adk web` since chapter 3. On Cloud Run those
 URIs are a Postgres connection string and a bucket — set by
-`setup-cloud-state.sh` in the pre-work, passed by `deploy-agent.sh`. The
+`setup-cloud-state.sh` in the setup steps below, passed by `deploy-agent.sh`. The
 defaults in the file are for running `main.py` on a laptop.
 :::
 
@@ -43,10 +43,10 @@ the disk goes with it. Picture the graph joining a queue at 3am, writing the
 ticket to a SQLite file in `/tmp`, and finding the file empty when the
 scheduler wakes it. No error, no crash — an agent that has forgotten.
 
-`deploy-agent.sh` says so out loud: without `CLOUD_SESSION_SERVICE_URI` it
-prints `⚠ state    sqlite in /tmp — this DIES with the container.`
+`deploy-agent.sh` now stops if the cloud session database or bucket is missing.
+Run the setup commands below before deploying; this chapter requires durable storage.
 
-:::task
+:::task id="cloud-setup"
 :::
 
 :::warn

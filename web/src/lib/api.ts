@@ -21,8 +21,11 @@ export type TurnItem = {
   service?: string;
   action?: "start" | "stop" | "kill" | "restart";
   look?: PaneTab;
+  inspectTask?: boolean;
   run?: string;
   clock?: { in?: number; every?: number; trigger?: boolean };
+  inspectFile?: string;
+  next?: { to: string; label: string };
   answer?: string;
   /** A venue button that only means something once the agent holds a place in line. */
   needs?: "queue";

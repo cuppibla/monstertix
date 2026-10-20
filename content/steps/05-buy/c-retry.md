@@ -10,7 +10,7 @@ the run; the order went through once. This section is why.
 :::exercise id="run"
 :::figure src="/docs-img/07-01-solution2.png" caption="The venue charges the order and then the reply fails. The retry carries the same idempotency key, so the venue answers with the order it already has: last_order is set once."
 :::
-:::figure src="/docs-img/09-01-hitl5.png" caption="Earlier screenshot of a successful order. In this experiment A is sold out: check your live order for 2 seats in C, $190 total."
+:::figure src="/docs-img/09-01-hitl5.png" example="true" caption="Earlier screenshot of a successful order. In this experiment A is sold out: check your live order for 2 seats in C, $190 total."
 :::
 :::
 

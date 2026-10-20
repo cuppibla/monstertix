@@ -22,6 +22,13 @@ export const APPS: Record<PaneTab, { label: string; path: string; service: strin
 
 /** Where a frame has got to, so a reload lands on the same screen. */
 const where: Partial<Record<PaneTab, string>> = {};
+const SESSION_REFRESH = "monstertix:refresh-agent-session";
+
+/** Lab actions finish outside ADK's iframe; reopen their exact session after completion. */
+export function refreshAgentSession(sessionId: string) {
+  where.agent = `${APPS.agent.path}&session=${encodeURIComponent(sessionId)}`;
+  window.dispatchEvent(new Event(SESSION_REFRESH));
+}
 
 export function frameHref(id: PaneTab): string {
   return where[id] ?? APPS[id].path;
@@ -49,6 +56,16 @@ export function AppFrame({ id, version = 0, onReload }: {
   // starts from wherever the last one had got to.
   const [src, setSrc] = useState(() => frameHref(id));
   useEffect(() => setSrc(frameHref(id)), [id, version, generation]);
+
+  useEffect(() => {
+    if (id !== "agent") return;
+    const reload = () => {
+      setSrc(frameHref("agent"));
+      setGeneration(n => n + 1);
+    };
+    window.addEventListener(SESSION_REFRESH, reload);
+    return () => window.removeEventListener(SESSION_REFRESH, reload);
+  }, [id]);
 
   useEffect(() => {
     if (id === "agent" && boundSession) {

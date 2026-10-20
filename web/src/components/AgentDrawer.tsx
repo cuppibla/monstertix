@@ -7,6 +7,7 @@ import type { Exercise } from "../lib/api";
 import { TaskView } from "./Exercise";
 import { Inline } from "./Inline";
 import { t } from "../i18n";
+import { PurchaseProgress } from "./PurchaseProgress";
 
 /* The ADK web UI, in a drawer from the right. It is the development window
    into a run (chat, Events, State, the graph), not part of the world, so it
@@ -48,6 +49,7 @@ function Steps() {
   const prepared = (exercise: Exercise) => exercise.tasks.some((task) => task.kind === "prepare");
   return (
     <div className="px-4 py-3">
+      {current.slug === "buy" && <PurchaseProgress />}
       {cards.map(({ id, exercise }) => {
         const content = <section className="mb-7 border-b pb-6 last:border-b-0" style={{ borderColor: "var(--hairline)" }}>
           <div className="kicker" style={{ color: "var(--accent)" }}>

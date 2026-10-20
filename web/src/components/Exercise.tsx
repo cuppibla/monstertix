@@ -7,6 +7,7 @@ import { PromptLab } from "./PromptLab";
 import { Inline } from "./Inline";
 import { StageBar } from "./StageBar";
 import { Turn } from "./Turn";
+import { PurchaseProgress } from "./PurchaseProgress";
 
 /* A block of things to do, placed in the reading with :::exercise id="…".
    Its tasks come from step.yaml: prepare (load a step's code), files (the
@@ -81,6 +82,7 @@ export function Exercise({ slug, exercise, color, children, placed = [] }: {
     <section className="my-7 rounded-3xl border p-5 sm:p-7"
              style={{ borderColor: `color-mix(in srgb, ${color} 40%, var(--hairline))`, background: "var(--card)" }}>
       <div className="kicker" style={{ color }}>{t("Your turn")}</div>
+      {slug === "buy" && <PurchaseProgress />}
       {exercise.title && <h2 className="display mt-2 text-[1.35rem] leading-tight">{exercise.title}</h2>}
       {exercise.needs && (
         <p className="mt-2 rounded-lg border px-3 py-1.5 text-[0.84rem]"

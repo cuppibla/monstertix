@@ -103,8 +103,7 @@ parts:
     run:
       title: Write one preference, then recall it in a new session
       needs: Chapter 3 loaded (the bar in 3a).
-      intro: Keep the session from 3a. Open memory/userx.md and compare it with that session’s recall response.
-        Save an aisle preference, then create just one new session.
+      intro: Keep the session from 3a. Save an aisle preference, inspect the saved memory beside the instruction, then create one new session to see whether it recalls that preference.
       apps:
       - agent
       tasks:
@@ -120,10 +119,12 @@ parts:
         - text: In the session from 3a, open **✓ recall** in Events. Find Sam’s weekend rule, then the Saturday
             event_id in get_seatmap. No need to send the same request again.
           look: agent
-        - text: In that same chat, save one fact. Look for the remember tool call, then refresh memory/userx.md
-            to see the new line.
+        - text: In the same ADK chat, send this message. Open the `remember` response in **Events** to confirm
+            the save. Then click **Show memory file** below to find the aisle preference in the actual file.
+            If it is already open, click **Read latest memory**. No need to refresh ADK Web.
           say: Remember this for next time — we always want aisle seats.
           in: agent
+          inspectFile: memory/userx.md
         - text: 'Now press **New Session** once. Send the original request and open its recall response: does it
             contain the aisle preference? The old conversation stays in session A.'
           say: Get me and Sam two tickets to the Amsterdam show.

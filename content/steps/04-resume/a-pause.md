@@ -23,11 +23,15 @@ living process. Three sentences, one per section:
 | 4c · Resume | When it is woken, what runs again, and what must never run again? |
 
 You press nothing to pause. One message starts the task, and the task stops
-itself.
+itself when `check_front` finds that the ticket is not yet at the front.
+The workflow code requests this pause; the model does not decide when to pause.
+The current agent run ends, while the ADK server may remain running.
+**This page ends at the pause.** Go to **4b · Kill** for the buttons that kill,
+restart, advance the queue, and resume the task.
 :::
 
 :::exercise id="run"
-:::figure src="/docs-img/08-01-flow1.png" caption="What the Events list looks like when the run parks: pick_show finishes with a plan, queue_up puts the ticket in state, then adk_request_input, and nothing after it. The run is waiting for a signal, not running."
+:::figure src="/docs-img/08-01-flow1.png" example="true" caption="What the Events list looks like when the run parks: pick_show finishes with a plan, queue_up puts the ticket in state, then adk_request_input, and nothing after it. The run is waiting for a signal, not running."
 :::
 :::
 
@@ -91,7 +95,7 @@ The run is not waiting. It has stopped, and the fact that it stopped at `check_f
 :::
 
 :::checkpoint
-**Nothing of yours is running. What is holding your place in the queue?**
+**The workflow has paused. What holds your place in the queue if the agent process stops?**
 :::answer
 The venue is. The ticket is a row in the venue's own database and its position is computed from the time you joined and the venue clock, with or without an agent. What the agent holds is the ticket id, written into session state and into `queue_up`'s recorded output. Lose the process and you lose nothing, because neither the place nor the id was in the process.
 :::

@@ -4,6 +4,7 @@
 #
 #     ./use-solution.sh 6        first: puts main.py, Dockerfile, requirements.txt
 #                                and monstertix/ into agent/
+#     ./deploy-venue.sh          cloud ticket seller (if not already deployed)
 #     ./setup-cloud-state.sh     then: Cloud SQL database + bucket (once)
 #     ./deploy-agent.sh          this
 #
@@ -52,21 +53,13 @@ case "${VENUE_URL:-}" in
     exit 1 ;;
 esac
 
-# Durable state, or an honest warning. A Cloud Run container's filesystem is
-# destroyed when the instance goes away, so sqlite in /tmp is a session store
-# that forgets — silently, overnight, exactly when nobody is watching.
-if [ -n "${CLOUD_SESSION_SERVICE_URI:-}" ]; then
-  SESSION_URI="$CLOUD_SESSION_SERVICE_URI"
-  ARTIFACT_URI="${CLOUD_ARTIFACT_SERVICE_URI:?run ./setup-cloud-state.sh}"
-  SQL_FLAG=(--add-cloudsql-instances "${SQL_CONNECTION_NAME:?run ./setup-cloud-state.sh}")
-  echo "→ state    Cloud SQL + $ARTIFACT_URI"
-else
-  SESSION_URI="sqlite+aiosqlite:////tmp/sessions.db"
-  ARTIFACT_URI="gs://none"
-  SQL_FLAG=()
-  echo "⚠ state    sqlite in /tmp — this DIES with the container."
-  echo "           Run ./setup-cloud-state.sh first for a real database."
-fi
+python3 scripts/cloud-check.py check
+SESSION_URI="$CLOUD_SESSION_SERVICE_URI"
+ARTIFACT_URI="$CLOUD_ARTIFACT_SERVICE_URI"
+SQL_FLAG=(--add-cloudsql-instances "$SQL_CONNECTION_NAME")
+echo "→ state    Cloud SQL + $ARTIFACT_URI"
+NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
+RUNTIME_SA="${AGENT_RUNTIME_SERVICE_ACCOUNT:-${NUMBER}-compute@developer.gserviceaccount.com}"
 
 echo "→ project  $PROJECT"
 echo "→ region   $REGION"
@@ -103,10 +96,16 @@ echo ""
 #    stays stopped until that person answers; the scheduler only resumes queue
 #    waits. That is deliberate — see handlers.resume_waiting.
 echo "→ deploying (3-4 minutes)"
+BUILD_SA=$(gcloud builds get-default-service-account --project "$PROJECT")
+BUILD_SA="${BUILD_SA##*/}"
+[ -n "$BUILD_SA" ] || { echo "✗ Could not resolve the Cloud Build service account"; exit 1; }
+gcloud projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$BUILD_SA" \
+  --role=roles/run.builder --condition=None --quiet >/dev/null
+
 gcloud run deploy "$SERVICE" \
   --source agent \
   --project "$PROJECT" --region "$REGION" \
-  --allow-unauthenticated \
+  --allow-unauthenticated --service-account="$RUNTIME_SA" \
   --set-env-vars "^|^SESSION_SERVICE_URI=$SESSION_URI|ARTIFACT_SERVICE_URI=$ARTIFACT_URI|VENUE_URL=$VENUE_URL|MEMORY_USER=${MEMORY_USER:-userx}|GOOGLE_CLOUD_PROJECT=$PROJECT|GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-global}|GOOGLE_GENAI_USE_VERTEXAI=true|ADK_MODEL=${ADK_MODEL:-gemini-2.5-flash}" \
   "${SQL_FLAG[@]}" \
   --quiet
@@ -128,13 +127,22 @@ URL=$(gcloud run services describe "$SERVICE" --project "$PROJECT" \
 echo "→ agent    $URL"
 
 # 2. The topic Scheduler publishes to.
-gcloud pubsub topics create "$TOPIC" --project "$PROJECT" 2>/dev/null \
-  && echo "→ topic    $TOPIC created" || echo "→ topic    $TOPIC exists"
+if gcloud pubsub topics describe "$TOPIC" --project "$PROJECT" >/dev/null 2>&1; then
+  echo "→ topic    $TOPIC exists"
+else
+  gcloud pubsub topics create "$TOPIC" --project "$PROJECT"
+  echo "→ topic    $TOPIC created"
+fi
 
 # 3. A service account Pub/Sub can push as, allowed to invoke the agent.
-gcloud iam service-accounts create "$SA" --project "$PROJECT" \
-  --display-name="Concert presale trigger" 2>/dev/null || true
 SA_EMAIL="$SA@$PROJECT.iam.gserviceaccount.com"
+if ! gcloud iam service-accounts describe "$SA_EMAIL" --project "$PROJECT" >/dev/null 2>&1; then
+  gcloud iam service-accounts create "$SA" --project "$PROJECT" --display-name="Concert presale trigger"
+fi
+# Pub/Sub signs the push token as this trigger account.
+gcloud iam service-accounts add-iam-policy-binding "$SA_EMAIL" --project "$PROJECT" \
+  --member="serviceAccount:service-${NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com" \
+  --role=roles/iam.serviceAccountTokenCreator --quiet >/dev/null
 
 gcloud run services add-iam-policy-binding "$SERVICE" \
   --project "$PROJECT" --region "$REGION" \
@@ -152,21 +160,14 @@ echo "→ iam      $SA_EMAIL may invoke $SERVICE"
 #    /trigger/wake finds the newest session parked on a QUEUE wait and tells it
 #    to check again. A session waiting for a person is reported, not resumed.
 ENDPOINT="$URL/trigger/wake"
-if gcloud pubsub subscriptions create "$TOPIC-push" --project "$PROJECT" \
-     --topic="$TOPIC" \
-     --push-endpoint="$ENDPOINT" \
-     --push-auth-service-account="$SA_EMAIL" 2>/dev/null; then
-  echo "→ push     → $ENDPOINT"
-else
-  # It already exists — so UPDATE it. `create` failing quietly used to leave an
-  # old push endpoint in place for ever, which meant a redeploy that changed the
-  # route looked like it worked and silently kept delivering to the old one.
+if gcloud pubsub subscriptions describe "$TOPIC-push" --project "$PROJECT" >/dev/null 2>&1; then
   gcloud pubsub subscriptions update "$TOPIC-push" --project "$PROJECT" \
-    --push-endpoint="$ENDPOINT" \
-    --push-auth-service-account="$SA_EMAIL" >/dev/null 2>&1 \
-    && echo "→ push     → $ENDPOINT  (updated)" \
-    || echo "→ push     ✗ could not update $TOPIC-push"
+    --push-endpoint="$ENDPOINT" --push-auth-service-account="$SA_EMAIL"
+else
+  gcloud pubsub subscriptions create "$TOPIC-push" --project "$PROJECT" --topic="$TOPIC" \
+    --push-endpoint="$ENDPOINT" --push-auth-service-account="$SA_EMAIL"
 fi
+echo "→ push     → $ENDPOINT"
 
 # 5. The alarm clock. This is clock.py from Chapter 2, run by Google instead of
 #    by your terminal: it has retries, a timezone, and it does not stop when
@@ -175,13 +176,13 @@ fi
 if gcloud scheduler jobs describe "$TOPIC" --project "$PROJECT" --location="$REGION" >/dev/null 2>&1; then
   gcloud scheduler jobs update pubsub "$TOPIC" --project "$PROJECT" \
     --location="$REGION" --schedule="$CRON" --time-zone="Etc/UTC" \
-    --topic="$TOPIC" --message-body='{"kind":"check_the_queue"}' >/dev/null 2>&1 \
-    && echo "→ schedule $CRON  (updated)" || echo "→ schedule job exists"
+    --topic="$TOPIC" --message-body='{"kind":"check_the_queue"}' >/dev/null
+  echo "→ schedule $CRON  (updated)"
 else
   gcloud scheduler jobs create pubsub "$TOPIC" --project "$PROJECT" \
     --location="$REGION" --schedule="$CRON" --time-zone="Etc/UTC" \
-    --topic="$TOPIC" --message-body='{"kind":"check_the_queue"}' >/dev/null \
-    && echo "→ schedule $CRON"
+    --topic="$TOPIC" --message-body='{"kind":"check_the_queue"}' >/dev/null
+  echo "→ schedule $CRON"
 fi
 
 # Remember the URL, so the workbench and verify.sh can find the cloud page.
@@ -192,7 +193,8 @@ else
 fi
 
 echo ""
-echo "✓ deployed."
+python3 scripts/cloud-check.py health
+echo "✓ deployed. Agent and session-store read verified; test Scheduler delivery in 6b."
 echo ""
 echo "  the front door — the page, not the dev UI:"
 echo "      $URL"

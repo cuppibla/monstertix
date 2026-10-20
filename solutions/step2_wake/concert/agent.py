@@ -4,8 +4,9 @@ Same agent as before. It plans the Amsterdam trip beautifully, and at 10:00 on
 Tuesday, when the presale opens, this file does nothing at all — because
 nothing calls it.
 
-The obvious fix is to tell it not to sleep. That is what the second instruction
-below is for. Swap it in, restart, and wait. Nothing happens. Not because the
+The optional prompt experiment tries telling it not to sleep. That is what
+the second instruction below is for; the main path leaves it unused. No new
+invocation starts just because you change the wording. Not because the
 wording is bad — because no wording can invoke a function. An instruction is
 text the model reads at the moment something sends it a message, and it says
 nothing about who sends one.
@@ -39,8 +40,9 @@ Keep answers short. Two or three sentences unless asked for more.
 """
 
 # ── The prompt lab ───────────────────────────────────────────────────────
-# Swap the instruction below into root_agent, restart, and watch the activity
-# feed. There will be no new invocation, however the wording is changed.
+# Optional: use the editable text box in "Try rewriting the instruction".
+# Its "Swap it in" button changes root_agent and restarts the agent for you.
+# The code viewer is read-only. The main path keeps INSTRUCTION unchanged.
 # "Monitor", "watch", "act on your own" describe behaviour the model has no
 # mechanism to perform. It is worth failing at this yourself once.
 
@@ -57,7 +59,7 @@ Keep checking until you have an answer.
 root_agent = Agent(
     name="concert",
     model=MODEL,
-    instruction=INSTRUCTION,           # ← swap to PROACTIVE_INSTRUCTION, then restart
+    instruction=INSTRUCTION,           # Main path: leave this unchanged.
     tools=[search_events, get_seatmap, recall],
 )
 

@@ -57,7 +57,7 @@ def main() -> None:
     log(f"target   {TRIGGER_URL}{route}")
     log(f"first fire in {args.delay:g}s"
         + (f", then every {args.every:g}s" if args.every else ", once only"))
-    log("go and watch the other terminal — do not touch the keyboard")
+    log("request is configured; waiting to send it — no typing needed")
 
     with httpx.Client(timeout=300) as client:
         time.sleep(args.delay)

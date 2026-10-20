@@ -1,24 +1,37 @@
-The agent is loaded and nothing is happening. Nothing *inside* the agent can
-change that. The missing piece is outside it, and it has two halves. This
-section builds the first half. The next section builds the second. The agent
-file does not change in either one. Hold on to that: it is the point.
+In 2a, you sent a question and the agent checked the Amsterdam tickets once.
+To check again later, something must send another request.
 
-## The two halves
+**The Server receives that request and runs the agent.** Clicking **Start
+MonsterTix** starts a Python web service. It loads the agent and prepares a
+Runner, then waits. Starting the server alone does not check any tickets.
+
+**The Clock sends the request later.** In 2c, it will wait ten seconds, then
+send the server a question about Amsterdam seats. You keep the same agent
+and instruction throughout.
+
+## Where the left-hand page fits
+
+The left-hand **MonsterTix** tab is a chat page served by this server.
+Sending a message there calls the server's `/wake` endpoint. That is an
+optional manual test; you do not need to type there for the Clock experiment.
+The **Venue panel** is the simulated ticket seller: it shows seat availability
+and the activity caused by tool calls.
+
+| Part | Its job in this experiment |
+|---|---|
+| MonsterTix chat page | Lets you send a question manually |
+| Server · `server.py` | Receives the question; its Runner runs the agent and returns the answer |
+| Clock · `clock.py` | Waits, then sends the preset question automatically |
+
+## A receiver and a caller
 
 :::figure src="/docs-img/03-02-ed.png" caption="Left: the trigger, a server that listens. Right: the triggerers, anything that calls it."
 :::
 
-| | plain words | the file | becomes, in Chapter 6 |
-|---|---|---|---|
-| **the trigger** | the server that listens. It can run the agent, and it waits to be called | `monstertix/server.py` | Cloud Run |
-| **the triggerer** | the thing that calls it. Here, a clock | `monstertix/clock.py` | Cloud Scheduler |
-
-The two words look alike, so read them as a pair: the trigger is the doorbell,
-the triggerer is whoever presses it. The one ending in *-er* does the pressing,
-like *caller*. In the figure, the house with the bell is the trigger; the
-people running at it, the cron job, the click on the website, are triggerers.
-
-This section is the house. The next one is the clock.
+The diagram calls the receiving server the **trigger**, and the things that
+send it requests **triggerers**. For this lab, keep the concrete pair in mind:
+**Server receives; Clock sends.** In Chapter 6 these jobs move to Cloud Run
+and Cloud Scheduler.
 
 ## What a Runner does
 
@@ -38,9 +51,8 @@ Here is what it does, every time a message arrives:
    the result back. Repeat until the model stops asking.
 6. The Runner returns the answer and writes every step to storage.
 
-`adk web` has a Runner of its own. This section is where you build one
-yourself, and that is the entire difference between a development UI and
-something you can deploy.
+`adk web` already has a Runner. The prepared server code below creates one
+for the MonsterTix app, so a caller can reach the agent without opening ADK Web.
 
 ## The trigger: your own web server
 
@@ -50,7 +62,7 @@ Runner, from the same URIs `adk web` uses, so the two see the same sessions:
 :::code path="monstertix/server.py" highlight="^_services = dict\(|^    session_service=session_service,|^    artifact_service=artifact_service,|runner = Runner\("
 :::
 
-Then it opens one door, `POST /wake`. A message comes in the body, and the
+The `POST /wake` endpoint receives a message in the request body, and the
 route hands it to the Runner:
 
 :::code path="monstertix/server.py" highlight="^@app\.post\(\x22/wake\x22\)|^async def wake\(payload|return await handlers\.wake\("
@@ -101,8 +113,8 @@ Same agent, same tools; now your server owns the Runner. The next section uses a
 :::
 
 :::key
-The trigger is a server that listens, with a Runner behind it. It can run the
-agent, and it does nothing until something calls it. The next section sends that request from a clock.
+The Server receives a question and uses its Runner to run the agent.
+Starting it only makes it ready. The Clock in the next section sends the question.
 :::
 
 :::optional title="The page, and the other routes" minutes=5 needs="MonsterTix running"

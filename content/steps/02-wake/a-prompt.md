@@ -1,7 +1,7 @@
 The agent from Chapter 1 answers well. Ask it about Amsterdam and it reads
 what it knows about you, searches the tour, and names the Saturday show. Then
 the presale opens, the queue starts moving, and this agent does nothing,
-because nobody typed. Ask it to keep checking in your one request, then watch what happens after the reply. The next section supplies the missing caller.
+because nobody typed. Ask it to keep checking in your one request, then watch what happens after the reply. Next, we start a server that can receive requests, then a clock that sends one.
 
 ## What one run is
 
@@ -24,6 +24,9 @@ string the Runner handed to the model at the start of the invocation, and it
 is read again only when the next message arrives.
 
 :::exercise id="run"
+**Leave `instruction=INSTRUCTION` as it is.** The code viewer is read-only.
+This main experiment only asks you to send a message in ADK Web.
+
 The middle of the ADK web UI is not only a chat log. Every step of the
 invocation is numbered, tool calls included:
 
@@ -47,6 +50,10 @@ A request to keep checking can influence what the model says. After this invocat
 
 :::optional title="Try rewriting the instruction" minutes=5 needs="chapter 2 loaded"
 ## So tell it not to sleep
+
+This experiment is optional. To try it, edit the **text box** below and press
+**Swap it in and restart the agent**. That button applies the change for you;
+you do not type into the read-only Python viewer.
 
 What would you do to make it check on its own? Try the thing most people
 reach for first: `INSTRUCTION` is prose handed to the model on every turn, so
@@ -120,6 +127,6 @@ would the venue's activity feed show?**
 :::answer
 Still one run per message you sent, and a feed that stops at the last tool
 call of your last message. The count only moves when something sends the
-Runner a message. In the next section, that something is a clock.
+Runner a message. Next we start a server to receive requests; then a clock sends one.
 :::
 :::

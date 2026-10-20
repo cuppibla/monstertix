@@ -482,7 +482,13 @@ else
 fi
 
 echo ""
-echo "✓ setup complete."
+echo "Setup checks finished. Review any warnings above; cloud setup is NOT yet verified."
+echo "  Before Chapter 6: ./deploy-venue.sh, then ./setup-cloud-state.sh."
+echo "  After loading Chapter 6: python3 scripts/cloud-check.py check"
+if ! grep -q "venue deployed" /tmp/venue-deploy.log; then
+  echo "✗ Cloud venue setup failed. Fix the error above before Chapter 6."
+  exit 1
+fi
 echo ""
 if [ -n "${VENUE_URL:-}" ]; then
   echo "  your venue:  $VENUE_URL/panel"

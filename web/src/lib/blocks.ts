@@ -47,7 +47,7 @@ import type { PaneTab } from "./api";
 export type Block =
   | { kind: "markdown"; html: string }
   | { kind: "callout"; variant: "key" | "note" | "warn"; html: string }
-  | { kind: "figure"; id: string; caption: string; src?: string }
+  | { kind: "figure"; id: string; caption: string; src?: string; example?: boolean }
   | { kind: "console"; url: string; label: string; note: string }
   | { kind: "file"; path: string; label: string }
   | { kind: "app"; tabs: PaneTab[] }
@@ -131,6 +131,7 @@ export function parseBlocks(markdown: string): Block[] {
         id: attribute(rawArgs, "id"),
         caption: attribute(rawArgs, "caption"),
         src: attribute(rawArgs, "src") || undefined,
+        example: attribute(rawArgs, "example") === "true",
       });
     } else if (name === "exercise") {
       // A "Your turn" inside the reading; its tasks live in step.yaml, under

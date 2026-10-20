@@ -45,15 +45,20 @@ parts:
             the agent log (**log**, at the top of the drawer).
           say: Get me and Sam two tickets to the Amsterdam show.
           in: agent
-        - text: 'Open the **State** tab: `queue_ticket`, `queue_event_id` and `plan` arrived when `queue_up`
-            ran. Then find the last event, `adk_request_input`, with a box under it. Do not type in it.'
+        - text: In **State**, find `queue_ticket`, `queue_event_id` and `plan`. Then return to **Events** and
+            find `adk_request_input`. The workflow created this pause automatically because the ticket is not
+            yet at the front. Its response box is for a resume signal; you do not need to type an answer here.
           look: agent
-        - text: 'Look at the venue panel: one ticket, position dropping, and a banner telling you the agent
-            can be killed. Nothing of yours is running right now.'
+        - text: 'Look at the venue panel: the ticket keeps moving toward the front. The agent’s current run
+            has ended and the task is paused. The ADK service can still be running; the venue maintains your
+            place independently.'
           look: venue
-        - text: 'The task is paused on the queue. Leave **Resume current task** alone for now: next you will
-            kill the process, bring it back, move this ticket to the front, and resume once. The last section
-            explains the records.'
+        - text: 'Once you see `adk_request_input`, this section is finished: the task is paused automatically.
+            Go to **4b · Kill** below. That page has the kill, restart, skip-the-wait and resume buttons in
+            order. You do not need to resume on this page.'
+          next:
+            to: /step/resume/b
+            label: Continue to 4b · Kill, restart, resume
   expect:
   - The graph lights up `START`, `open_the_night`, `pick_show`, `queue_up` and `check_front`. `ready_to_buy`
     stays grey.
@@ -63,8 +68,8 @@ parts:
     seats: 2, …}`, `request: Get me and Sam two tickets…`'
   - 'The last event is a function call `adk_request_input` with the message *Still in the queue at #14,… .
     Wake me again and I will check.* Then nothing: the run has ended.'
-  - 'Venue banner: **Agent is waiting in line, #14,…** / *…s left at 1×. Safe to kill the agent. It will still
-    be here. SKIP THE WAIT sends it to the front.*'
+  - 'Venue banner: **Your ticket is in line, #14,…**. The venue maintains the queue even if the agent process
+    stops.'
   - 'The task card on this page: *paused in the queue · nothing is running* · paused on **the queue** · `queue:wait`
     · ticket `q_… · ms-ams-01`.'
   checks:
@@ -99,9 +104,8 @@ parts:
       title: Kill the process, then continue the same task
       needs: The task you started in 4a, parked in the queue. If the task card says *no task yet*, go back
         to 4a and send the message.
-      intro: 'The point of this section: the process dies, the task does not. Same session, same ticket. Before
-        you press anything, guess which of these die with the process: the ticket, the plan, the place in the
-        queue, the paused run, the conversation. The answer is at the end of the page.'
+      intro: Test whether the saved task survives a crash. Use the buttons below in order. Keep the same session
+        and queue ticket throughout; do not load the chapter again or send a new chat message.
       apps:
       - agent
       - venue
@@ -109,29 +113,34 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: Kill the agent process. **kill -9** is at the top of the ADK web UI drawer; this button does
-            the same.
+        - text: Click **kill -9** below to simulate an ADK process crash. Expect its status to change to **killed**;
+            ADK cannot accept messages until restarted. The task was already saved at the pause.
           service: agent
           action: kill
-        - text: 'Look at the venue panel: the number is still dropping. The venue did not notice; the queue
-            is the venue''s, and the agent only holds a ticket to it.'
+        - text: 'Check the **Venue panel** on the left. The same `q_…` ticket is still there and its position
+            keeps dropping. This is expected: the venue is a separate service and keeps your place while ADK
+            is stopped.'
           look: venue
-        - text: Start the agent again.
+        - text: Click **Start Agent · adk web** below. Wait for **running**. The service is available again,
+            but the task is still paused; starting the service does not resume it. The venue panel should keep
+            showing the same ticket.
           service: agent
           action: start
-        - text: Press **SKIP THE WAIT** on the venue panel. The ticket moves to the front of the queue.
+        - text: Click **SKIP THE WAIT** below. Expect the venue to show **AT THE FRONT**, with the same `q_…`
+            ticket. This advances the venue queue; the task still needs the resume signal in the next step.
           press: SKIP THE WAIT
           venue: advance-queue
-        - text: Resume once, in this same task. check_front queries the venue again; the task becomes **ready
-            to buy**, with zero orders. Do not type a new chat message.
+        - text: 'Click **Resume current task** below. Expect **Complete: the task reached the front** and **Tickets
+            bought = 0**. Compare the ticket shown below with the one from before the crash. The button then
+            disables because this chapter’s task has finished.'
           resume: task
   expect:
   - 'After kill -9: the venue panel keeps counting down the same `q_…` ticket. The ADK web UI drawer says *killed*
     until you start it again.'
   - 'After SKIP THE WAIT and Resume: `[check_front] at the front`, then `[ready]       at the front for ms-ams-01.
     Ready to buy.` The graph is fully green.'
-  - 'Venue: one ticket, **AT THE FRONT**; banner *Agent is at the front of the queue*. No order. The task card:
-    *ready to buy* · yes.'
+  - 'Venue: the same ticket, **AT THE FRONT**, and zero orders. Beside Resume: **Complete: the task reached
+    the front of the queue. Nothing has been bought.**'
   checks:
   - id: killed
     label: The agent was killed with -9, then started again
@@ -167,8 +176,8 @@ parts:
     read:
       title: Find the resume in the events
       needs: The session from 4b, after its one Resume.
-      intro: 'No new actions. Read the session you just finished: on each Resume, which nodes ran again, and
-        which did not.'
+      intro: The task has finished. This section only inspects its saved Events; no more messages or human-input
+        answers are needed.
       apps:
       - agent
       tasks:
@@ -187,10 +196,17 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: 'In **Events**, find the queue:wait response that resumes the saved invocation. Compare the
-            node records: completed pick_show and queue_up outputs are reused; check_front queries the venue
-            again. The venue still has one ticket. Graph traversal counts alone do not prove a function ran.'
+        - text: Click **Open this task in ADK** below. It opens the current task’s session and reloads its
+            Events, including the Resume result. If ADK was already open, it may have been showing the older
+            paused view.
           look: agent
+          inspectTask: true
+        - text: 'In **Events**, scroll past the old `adk_request_input` call. That input box belongs to the
+            earlier pause; **do not fill it in**. Find its later tool response containing `checked: true`,
+            then the final **Ready to buy** result. The Resume button submitted that response for you.'
+        - text: 'In **State**, confirm the same `queue_ticket` and `ready_to_buy: true`. This is the result:
+            the task continued after the crash, using the saved ticket. The explanation below shows why completed
+            nodes reuse their outputs while `check_front` runs again.'
   expect:
   - 'Run 1 ends on `adk_request_input` (`queue:wait`). Run 2 begins with its response, `{"checked": true}`,
     which the Resume button sent.'

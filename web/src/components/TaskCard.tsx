@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api, type ResumeResult, type TaskSummary } from "../lib/api";
 import { useBench } from "../lib/bench";
 import { t } from "../i18n";
+import { refreshAgentSession } from "./AppFrame";
 
 /* The current task, read from the session store every few seconds: which
    session it is, what it is paused on, the ticket, the authorization, the
@@ -12,14 +13,16 @@ import { t } from "../i18n";
    session that holds it: the same function_response the ADK web UI's answer
    box sends. A wait on a person stays a wait on a person. */
 
-export function useTask(every = 3000): { task: TaskSummary | null; reload: () => Promise<void> } {
+export function useTask(every = 3000): { task: TaskSummary | null; error: boolean; reload: () => Promise<void> } {
   const [task, setTask] = useState<TaskSummary | null>(null);
+  const [error, setError] = useState(false);
   const { epoch } = useBench();
   const reload = useCallback(async () => {
     try {
       setTask(await api.task());
+      setError(false);
     } catch {
-      /* the workbench restarting: keep the last picture */
+      setError(true);
     }
   }, []);
   useEffect(() => {
@@ -29,7 +32,7 @@ export function useTask(every = 3000): { task: TaskSummary | null; reload: () =>
     }, every);
     return () => clearInterval(timer);
   }, [reload, every, epoch]);
-  return { task, reload };
+  return { task, error, reload };
 }
 
 function shortId(id: string | null): string {
@@ -39,6 +42,8 @@ function shortId(id: string | null): string {
 
 function whyNot(task: TaskSummary | null): string {
   if (!task || !task.session_id) return t("No task yet: start one in the section before this one.");
+  if (!task.pending && task.last_order) return "Order complete. There is no queue wait left to resume.";
+  if (!task.pending && task.ready_to_buy) return "Complete: the task reached the front of the queue. Nothing has been bought.";
   if (!task.pending) return t("Nothing is paused.");
   if (task.pending.kind === "person") return t("Waiting for you: answer the pending event.");
   if (task.pending.kind !== "queue") return t("Paused on something that is not a queue wait.");
@@ -64,6 +69,7 @@ export function ResumeButton({ task, onDone, solid = true }: {
       if (result.ok) {
         const said = (result.said ?? []).slice(-1)[0];
         setNote(t("Resumed via {via}.", { via: result.via ?? "" }) + (said ? ` ${said}` : ""));
+        if (result.session_id) refreshAgentSession(result.session_id);
       } else {
         setNote(result.reason ?? t("It did not resume."));
       }
@@ -82,7 +88,8 @@ export function ResumeButton({ task, onDone, solid = true }: {
               title={blocked || t("Answers the queue wait in the session that holds it")}>
         {busy ? t("Resuming…") : t("Resume current task")}
       </button>
-      {blocked && !busy && <span className="text-[0.76rem]" style={{ color: "var(--fg-faint)" }}>{blocked}</span>}
+      {blocked && !busy && <span className="text-[0.76rem]" role="status"
+        style={{ color: !task?.pending && (task?.ready_to_buy || task?.last_order) ? "var(--ok)" : "var(--fg-faint)" }}>{blocked}</span>}
       {note && <span className="text-[0.76rem]" style={{ color: "var(--fg-muted)" }}>{note}</span>}
     </div>
   );

@@ -1,7 +1,15 @@
-The run is parked and the agent process is about to die. Decide first what dies with it: the ticket, the plan, the place in the queue, the paused run, the conversation. Then kill it, bring it back, and continue the same task, not a new one.
+**Can this ticket task survive a program crash?** The task has already paused
+and saved its progress. Now deliberately kill the ADK process, start it again,
+and resume the same task. Success means the same session and ticket survive,
+without choosing the show or joining the queue again.
+
+After **kill -9**, expect the ADK service to show **killed** and stop accepting
+messages. The venue page stays open and the ticket keeps moving: it belongs
+to the ticket seller, which is a separate service. Then use the remaining
+buttons below to start ADK, move the ticket to the front, and resume.
 
 :::exercise id="run"
-:::figure src="/docs-img/06-01-resume1.png" caption="The venue panel while the run is parked: the agent is in line, the number is moving, and nothing of yours is running. Safe to kill."
+:::figure src="/docs-img/06-01-resume1.png" example="true" caption="The ticket stays in the venue's queue while the agent task is paused. Killing the ADK process does not remove the ticket."
 :::
 :::
 

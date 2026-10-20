@@ -1,9 +1,24 @@
-The server from the last section is listening, and nothing happens until
-something calls it. In that section the caller was you. Now the caller is a
-clock: it sleeps, then makes one HTTP request, and you are not involved. This
-is the second half, the triggerer.
+The Server is ready to receive a request. **The Clock waits ten seconds,
+then sends it this preset message:**
 
-## The triggerer: something that knows the time
+> Check whether the Amsterdam shows still have seats, and tell me what you find.
+
+You do not type this into a chat box. Clicking **Fire once, 10s from now**
+runs the Clock, which sends the message to the Server's `/wake` endpoint.
+The Server's Runner then runs the agent, the agent asks its tools to check
+the tickets, and the Server returns the answer to the Clock.
+
+```text
+Click Fire once → Clock waits 10 seconds → sends the preset question
+               → Server runs the agent → tools check tickets → answer
+```
+
+**This is a scheduled request, not just a connection to the Server.**
+The ten seconds are the delay before sending; the agent needs additional
+time to finish its answer. Read that answer in **MonsterTix → log**.
+It is not automatically added to the chat conversation visible on the left.
+
+## The Clock code: wait, then send
 
 `monstertix/clock.py` imports `httpx`, `time` and `argparse`. No ADK. It has
 never heard of an agent, a Runner or a session. It knows a URL and a delay:
@@ -20,7 +35,8 @@ the agent has no purchase tool, and nothing is ever bought without an
 authorization a person gives in the task.
 
 :::exercise id="fire"
-Ten seconds after you set the clock, with your hands off the keyboard:
+After the delay, the Clock sends its request. The Server runs the agent,
+then the Clock reports completion. These lines come from the two logs:
 
 ```
 [clock]  firing → POST /wake
@@ -40,11 +56,15 @@ The session id was `wake-` and eight hex digits: every fire is a fresh session
 with no memory of the last one. The agent still knew about Sam and the upper
 bowl, because `recall()` reads the memory file, which is not the session.
 Chapter 3 takes those two stores apart.
+
+The one-shot Clock exits after the response. **Check complete** means it
+finished normally. The Server stays running, ready for another request.
 :::
 
 :::key
-A server that listens is the trigger. A clock that calls it is the triggerer.
-The agent sits behind both and never learns which one woke it.
+In 2a, you started the run by sending a message. Here, the Clock sends the
+message at the scheduled time. The Server runs the same agent in both cases
+of a manual `/wake` call and a Clock `/wake` call.
 :::
 
 :::note
@@ -57,8 +77,8 @@ are separate files.
 :::
 
 :::optional title="A repeating clock, and the scheduler's route" minutes=5 needs="MonsterTix running"
-**A repeating clock.** Same file, `--every`. Watch it fire twice and switch it
-off beside the button; each fire is a new `wake-` session.
+**A repeating clock.** Same file, `--every`. Watch it fire twice and press
+**Stop clock**; each fire is a new `wake-` session.
 
 :::exercise id="repeat"
 :::

@@ -11,7 +11,7 @@ guard refuse. You also arm one more fault here, for the next section to read
 from the same run: the venue will commit the order and then lose the reply.
 
 :::exercise id="run"
-:::figure src="/docs-img/07-01-bug1.png" caption="The scenario sells out section A while the run is parked. Its saved plan still asks for A; the guard will check the current inventory."
+:::figure src="/docs-img/07-01-bug1.png" example="true" caption="The scenario sells out section A while the run is parked. Its saved plan still asks for A; the guard will check the current inventory."
 :::
 :::figure src="/docs-img/07-01-bug2.png" caption="Without a guard: the purchase is attempted on the stale plan and the venue refuses it. The agent only finds out by failing."
 :::

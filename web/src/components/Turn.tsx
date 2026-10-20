@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { api, type Job, type PaneTab, type TurnItem } from "../lib/api";
 import { useBench } from "../lib/bench";
-import { ServiceControls, ServiceLog } from "./ServiceControls";
+import { ClockAction } from "./ClockAction";
+import { stateText, DOT } from "./ServiceControls";
+import { refreshAgentSession } from "./AppFrame";
 import { ResumeButton, useTask } from "./TaskCard";
 import { t } from "../i18n";
 import { Inline } from "./Inline";
@@ -54,13 +57,16 @@ function ResumeItem() {
   return (
     <div className="mt-1.5">
       <ResumeButton task={task} onDone={() => reload()} />
+      {task?.queue_ticket && <p className="mt-2 text-xs" style={{color:"var(--fg-muted)"}}>
+        Ticket: <code>{task.queue_ticket}</code> · Session: <code>{task.session_id}</code>
+      </p>}
     </div>
   );
 }
 
 function PurchaseScenario() {
   const {task, reload} = useTask();
-  const {stage} = useBench();
+  const {stage, setDrawerOpen} = useBench();
   const [busy, setBusy] = useState(false);
   const [steps, setSteps] = useState<string[]>([]);
   const [prepared, setPrepared] = useState<string | null>(null);
@@ -85,6 +91,8 @@ function PurchaseScenario() {
       {busy?"Preparing…":ready?"Scenario ready":"Prepare the changing-world scenario"}
     </button>
     {blocked&&<p className="mt-2 text-xs" style={{color:"var(--fg-muted)"}}>{blocked}</p>}
+    {blocked && !task?.last_order && <Link className="btn mt-2 inline-flex" to="/step/buy/a"
+      onClick={() => setDrawerOpen(false)}>Go to 5a · start the task and confirm the budget →</Link>}
     {steps.length>0&&<ul className="mt-2 text-xs" aria-live="polite">{steps.map(label=><li key={label}>✓ {label}</li>)}</ul>}
     {error&&<p className="mt-2 text-sm" role="alert" style={{color:"var(--bad)"}}>{error}</p>}
     {ready&&task?.pending?.kind==="queue"&&<div className="mt-3">
@@ -120,15 +128,33 @@ function CopyLine({ text, tab, label }: { text: string; tab?: PaneTab; label: st
   );
 }
 
-/* The clock has no app to show, so its state, switch and log sit here. */
-function ClockState() {
-  const [log, setLog] = useState(false);
-  return (
-    <div className="mt-2">
-      <ServiceControls name="clock" log={log} onLog={setLog} />
-      {log && <div className="mt-2"><ServiceLog name="clock" /></div>}
-    </div>
-  );
+/** Read the actual file beside the instruction, including inside the ADK drawer. */
+function InspectFile({ path }: { path: string }) {
+  const [lines, setLines] = useState<string[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function read() {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api.fileRead(path);
+      if (result.error || !result.lines) throw new Error(result.error || "The file could not be read.");
+      setLines(result.lines);
+    } catch(e) {
+      setLines(null);
+      setError((e as Error).message);
+    } finally { setBusy(false); }
+  }
+  return <div className="mt-2">
+    <button type="button" className="btn" disabled={busy} onClick={read}>
+      {busy ? "Reading…" : lines ? "Read latest memory" : "Show memory file"}
+    </button>
+    {error && <p role="alert" className="mt-1 text-sm" style={{color:"var(--bad)"}}>{error}</p>}
+    {lines && <div className="mt-2">
+      <p className="text-xs" style={{color:"var(--fg-faint)"}}>{path} · read-only · read when you click</p>
+      <pre className="log quiet-scroll mt-1 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg p-2">{lines.join("\n")}</pre>
+    </div>}
+  </div>;
 }
 
 function RunItem({ slug, task, index, command }: { slug: string; task: string; index: number; command: string }) {
@@ -197,7 +223,7 @@ function useInLine(watch: boolean): boolean {
 }
 
 function Item({ item, slug, task, index }: { item: TurnItem; slug: string; task: string; index: number }) {
-  const { refresh, service, focus } = useBench();
+  const { refresh, service, focus, setDrawerOpen, bump } = useBench();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const kind = kindOf(item);
@@ -251,26 +277,40 @@ function Item({ item, slug, task, index }: { item: TurnItem; slug: string; task:
   } else if (kind === "service") {
     const svc = service(item.service ?? "");
     const name = svc?.label ?? item.service ?? "";
+    const alreadyRunning = (item.action ?? "start") === "start" && ["running", "external", "remote"].includes(svc?.state ?? "");
+    const starting = (item.action ?? "start") === "start" && svc?.state === "starting";
+    const alreadyStopped = ["kill", "stop"].includes(item.action ?? "") && svc?.state === "stopped";
     const label = item.action === "kill" ? `kill -9 · ${name}`
       : item.action === "stop" ? t("Stop {name}", { name })
       : item.action === "restart" ? t("Restart {name}", { name })
       : t("Start {name}", { name });
     control = (
       <div className="mt-1.5">
-        <button type="button" className={`btn ${item.action === "kill" ? "btn--danger" : "btn--solid"}`} disabled={busy}
+        <button type="button" className={`btn ${item.action === "kill" ? "btn--danger" : "btn--solid"}`} disabled={busy || alreadyRunning || starting || alreadyStopped}
                 onClick={() => act(async () => {
                   const r = await api.service(item.service ?? "", item.action ?? "start");
-                  return r.detail ?? "";
+                  bump();
+                  return ["running", "starting", "stopped"].includes(r.state) ? "" : r.detail ?? "";
                 })}>
-          {busy ? t("Working…") : label}
+          {busy ? t("Working…") : starting ? `Starting ${name}…` : alreadyRunning ? `${name} is running` : label}
         </button>
+        {svc && <p className="mt-2 text-sm" role="status" style={{color: DOT[svc.state]}}>
+          {name}: {stateText(svc)}
+          {svc.state === "stopped" && item.service === "agent" ? ". The saved task remains in the session database." : ""}
+        </p>}
       </div>
     );
   } else if (kind === "look") {
     control = (
       <div className="mt-1.5">
-        <button type="button" className="btn" onClick={() => item.look && focus(item.look)}>
-          {t("Show {where}", { where: t(PANE_NAME[item.look as PaneTab] ?? item.look ?? "") })} →
+        <button type="button" className="btn" disabled={busy} onClick={() => item.inspectTask ? act(async () => {
+          const task = await api.task();
+          if (!task.session_id) return "No task found. Start this chapter's task first.";
+          refreshAgentSession(task.session_id);
+          focus("agent");
+          return "";
+        }) : item.look && focus(item.look)}>
+          {item.inspectTask ? "Open this task in ADK" : t("Show {where}", { where: t(PANE_NAME[item.look as PaneTab] ?? item.look ?? "") })} →
         </button>
       </div>
     );
@@ -281,24 +321,7 @@ function Item({ item, slug, task, index }: { item: TurnItem; slug: string; task:
   } else if (kind === "scenario") {
     control = <PurchaseScenario />;
   } else if (kind === "clock") {
-    const delay = item.clock?.in ?? 10;
-    const every = item.clock?.every ?? 0;
-    const trigger = !!item.clock?.trigger;
-    control = (
-      <div className="mt-1.5">
-        <button type="button" className="btn btn--solid" disabled={busy}
-                onClick={() => act(async () => {
-                  const r = await api.service("clock", "restart", { delay, every, trigger });
-                  return r.state === "stopped" ? t("The clock did not start; open its log on the left.") : t("The clock is set. Hands off the keyboard.");
-                })}>
-          {every ? t("Fire every {every}s, first in {delay}s", { every, delay }) : t("Fire once, {delay}s from now", { delay })}
-        </button>
-        <code className="inline-code ml-2 text-[0.72rem]">
-          python -m monstertix.clock --in {delay}{every ? ` --every ${every}` : ""}{trigger ? " --trigger" : ""}
-        </code>
-        <ClockState />
-      </div>
-    );
+    control = <ClockAction settings={item.clock ?? {}} />;
   }
 
   return (
@@ -316,6 +339,10 @@ function Item({ item, slug, task, index }: { item: TurnItem; slug: string; task:
           </p>
         )}
         {control}
+        {item.inspectFile && <InspectFile path={item.inspectFile} />}
+        {item.next && <Link className="btn mt-2 inline-flex" to={item.next.to} onClick={() => setDrawerOpen(false)}>
+          {item.next.label} →
+        </Link>}
         {note && <p className="mt-1 text-[0.74rem]" style={{ color: "var(--fg-faint)" }}>{note}</p>}
       </div>
     </li>

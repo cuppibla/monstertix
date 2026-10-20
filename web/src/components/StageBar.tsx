@@ -71,7 +71,7 @@ export function StageBar({ step, color, prominent = false, scope = "all" }: {
             ? t("Reset the venue (orders, queue, inventory). Code, sessions and memory stay.")
             : <>{loadedText}{" "}{matches ? (stage.edited ? "" : t("That is this step's code.")) : t("This step uses step {n}.", { n: shown(step) })}</>}
         </span>
-        <button
+        {(!matches || venueOnly) && <button
           type="button"
           onClick={load}
           disabled={busy}
@@ -81,9 +81,21 @@ export function StageBar({ step, color, prominent = false, scope = "all" }: {
           {busy ? (venueOnly ? t("Resetting…") : t("Loading…"))
             : venueOnly ? t("Reset the venue")
             : matches ? t("Reload step {n}", { n: shown(step) }) : t("Load step {n}", { n: shown(step) })}
-        </button>
+        </button>}
       </div>
-      {prominent && (
+      {matches && !venueOnly && (
+        <details className="mt-2 text-sm">
+          <summary style={{color:"var(--fg-faint)"}}>Need to start this chapter over?</summary>
+          <p className="mt-2" style={{color:"var(--fg-muted)"}}>
+            This resets the venue, clears the current sessions and restores the chapter's code and memory.
+            Keep the current task when continuing to the next section. This is not a page refresh.
+          </p>
+          <button type="button" className="btn mt-2" disabled={busy} onClick={load}>
+            {busy ? t("Loading…") : `Reset chapter ${shown(step)} and start over`}
+          </button>
+        </details>
+      )}
+      {prominent && (!matches || venueOnly) && (
         <p className="mt-1.5 text-[0.74rem]" style={{ color: "var(--fg-faint)" }}>
           {venueOnly
             ? (matches

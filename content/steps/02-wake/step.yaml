@@ -24,10 +24,8 @@ parts:
       - kind: prepare
         id: prepare
         step: 2
-        explain: 'Same agent as Chapter 1, plus a second instruction in `agent/concert/agent.py` for the prompt
-          lab below.
-
-          '
+        explain: Load the same agent as Chapter 1. Leave instruction=INSTRUCTION unchanged. The code viewer
+          is read-only; rewriting the instruction is a separate optional experiment below.
       - kind: turn
         id: turn
         items:
@@ -53,15 +51,13 @@ parts:
         only:
         - agent/concert/
         highlight: ^INSTRUCTION = \x22\x22\x22|^PROACTIVE_INSTRUCTION = \x22\x22\x22|^    instruction=INSTRUCTION,|^    tools=\[
-        highlightLabel: The instruction and tools define what happens during a run. A caller is still needed
-          to start the next one.
+        highlightLabel: 'Read-only: leave instruction=INSTRUCTION unchanged. The main path sends a message
+          in ADK Web. The optional prompt experiment has its own editable text box.'
     lab:
       title: Tell it to keep checking, exactly as you would tell a person
-      intro: 'Pick a wording, or write your own. Each swap replaces the body of `PROACTIVE_INSTRUCTION` in
-        `agent/concert/agent.py`, points `root_agent` at it, and restarts the agent. Then say the plan in a
-        **new session** and take your hands off the keyboard.
-
-        '
+      intro: 'Optional: choose a preset or edit the text box below, then press Swap it in and restart the agent.
+        The button applies PROACTIVE_INSTRUCTION for you. Send the plan in a new ADK session, then observe
+        whether another run starts without a new message.'
       apps:
       - agent
       - venue
@@ -126,8 +122,8 @@ parts:
   exercises:
     start:
       title: Start the server; the clock will call it next
-      intro: Start MonsterTix and read its listening log. Its Runner is ready, but no invocation begins until
-        a request arrives. The next section supplies that request with a clock.
+      intro: Start MonsterTix to make the server ready. It receives questions and uses its Runner to run the
+        agent. Starting it does not check tickets. In the next section the Clock sends the question for you.
       apps:
       - monstertix
       - venue
@@ -135,10 +131,9 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: 'Start MonsterTix. It appears on the left, on the **MonsterTix** tab of the world column. Press
-            **log** there and read the last line: *nothing will happen until something calls it.*
-
-            '
+        - text: Click **Start MonsterTix** if it is not already running. On the left, choose **MonsterTix →
+            log** and find *listening*. The server is ready to receive a request. You do not need to type into
+            its chat box.
           service: monstertix
           action: start
       - kind: files
@@ -182,15 +177,13 @@ parts:
   checks: []
 - id: c
   label: Clock
-  headline: Something has to call it
+  headline: The Clock sends the next request
   body: c-clock.md
   exercises:
     fire:
-      title: Set the clock, hands off
-      intro: 'MonsterTix is still listening. Now the caller is a clock: it sleeps ten seconds, then makes one
-        `POST /wake`. Set it, and stop typing.
-
-        '
+      title: Schedule one ticket check
+      intro: No typing is needed. Click Fire once below. After ten seconds, the Clock sends the preset Amsterdam-seat
+        question to the Server. The Server runs the agent and returns its answer.
       apps:
       - monstertix
       - venue
@@ -198,32 +191,19 @@ parts:
       - kind: turn
         id: turn
         items:
-        - text: 'Make sure MonsterTix is still *running* on the left. If it is not, start it; the clock needs
-            a door to knock on.
-
-            '
+        - text: Check that **MonsterTix is running**. If it is stopped, start it below. This is the server
+            that will receive the Clock’s request.
           service: monstertix
           action: start
-        - text: 'Set the clock to fire once, ten seconds from now. Its switch and log appear beside the button.
-            **Now stop typing.**
-
-            '
+        - text: 'Click **Fire once, 10s from now**. The question is already in the code: “Check whether the
+            Amsterdam shows still have seats, and tell me what you find.” Wait for **Request sent**, then **Check
+            complete** below. The ten seconds are the delay before sending; the answer takes additional time.'
           clock:
             in: 10
-        - text: 'Read the clock''s log: `firing → POST /wake`, then `done. the agent ran and you were not involved.`
-
-            '
-        - text: 'Read MonsterTix''s log: `woken · session wake-…`, then `called recall`, `called search_events`,
-            then `said` and the agent''s sentence about the Amsterdam shows. Same lines as before; a different
-            caller.
-
-            '
+        - text: To read the answer, open **MonsterTix → log** on the left. Find the latest `woken · session
+            wake-…`, the tool calls, and `said` with the answer. A Clock request creates its own session; its
+            answer is in this log, not automatically in the visible chat.
           look: monstertix
-        - text: 'Check the venue panel: the activity feed moved, **Tickets bought** did not. The clock asked
-            for a check, not a purchase.
-
-            '
-          look: venue
       - kind: files
         id: files
         open: monstertix/clock.py
@@ -242,17 +222,15 @@ parts:
       - kind: turn
         id: turn-repeat
         items:
-        - text: 'Fire in five seconds, then every thirty. Watch two fires in MonsterTix''s log, then switch
-            the clock off beside the button.
-
-            '
+        - text: Fire in five seconds, then repeat thirty seconds after each response. Watch two requests in
+            MonsterTix’s log, then press **Stop clock** below.
           clock:
             in: 5
             every: 30
       optional: true
   expect:
-  - 'Clock log: `target http://127.0.0.1:8090/wake`, `first fire in 10s, once only`, `firing → POST /wake`,
-    `done. the agent ran and you were not involved.`'
+  - 'Clock status: waiting, then Request sent, then Check complete. The one-shot process exits after the response;
+    that is normal. Expand Clock log to see the actual request and completion lines.'
   - 'MonsterTix log: `woken · session wake-…`, `called recall`, `called search_events`, `said …` with the Saturday
     show and its sections.'
   - 'Venue panel: new lines in **What the agent is doing**; **Tickets bought** still 0.'

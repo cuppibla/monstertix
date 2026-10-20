@@ -3,168 +3,170 @@ kicker: Chapter 6
 minutes: 15
 color: blue
 stage: 6
-summary: >
-  The same graph, the same guard, the same key — on Cloud Run, with Cloud SQL
-  under it and Cloud Scheduler as the clock. Create the task there, let the
-  scheduler finish it, then take it all down.
+summary: 'The same graph, the same guard, the same key — on Cloud Run, with Cloud SQL under it and Cloud Scheduler
+  as the clock. Create the task there, let the scheduler finish it, then take it all down.
+
+  '
 parts:
-  - id: a
-    label: Move
-    headline: Move the runtime and storage
-    body: a-move.md
-    expect:
-      - "`./deploy-agent.sh` prints `→ state    Cloud SQL + gs://…/artifacts`, then `→ deploying (3-4 minutes)`, then `→ agent    https://concert-….run.app`, `→ push     → https://…/trigger/wake`, `→ schedule 0 3 * * *`, and `✓ deployed.` with the commands you will use next."
-      - "`curl …/health` answers `{\"ok\": true, \"app\": \"concert\", \"user\": \"user\", \"agent\": \"concert_nightly\", \"kind\": \"Workflow\", \"sessions\": \"/adk?host=/cloudsql/…\", \"memory\": \"gs://…/memory\", \"venue\": \"https://venue-….run.app\"}` — a Postgres host, a bucket, the deployed venue."
-      - "`.env` gains `AGENT_SERVICE_URL=…`. The task card on this page still shows your **local** task from chapter 5: deploying copied code, not `sessions.db`."
-    exercises:
-      run:
-        title: Deploy the chapter 6 layout
-        intro: >
-          Load chapter 6: it puts `main.py`, a `Dockerfile`, `requirements.txt`
-          and a copy of `monstertix/` into `agent/` beside the unchanged
-          `concert/` package. Then deploy. **The deploy takes three to four
-          minutes** — start it and read on.
-        apps: [venue]
-        tasks:
-          - kind: prepare
-            id: prepare
-            step: 6
-          - kind: files
-            id: files
-            open: agent/main.py
-            stage: 6
-            compare: 5
-            only: [agent/main.py, agent/Dockerfile, agent/requirements.txt, agent/monstertix/, agent/concert/]
-            highlight: '^SESSION_URI = os\.environ\.get|^ARTIFACT_URI = os\.environ\.get|web=False|trigger_sources=\["pubsub"\]|@app\.post\("/trigger/wake"\)|allow=\("queue",\)|CMD exec uvicorn main:app|^asyncpg|^google-cloud-storage'
-            highlightLabel: '`main.py` is new; `concert/` is byte-for-byte chapter 5. The two service URIs come from the environment, `/trigger/wake` is the scheduler''s door, and it resumes only `queue` waits. The Dockerfile and requirements are ordinary.'
-          - kind: turn
-            id: turn
-            items:
-              - text: >
-                  Deploy. Cloud Run service, Pub/Sub topic, a service account,
-                  a push subscription to `/trigger/wake`, a Scheduler job. It is
-                  long; the output tells you what it is doing.
-                run: ./deploy-agent.sh
-              - text: >
-                  Ask the deployed service what it is running on. `sessions`
-                  is a Cloud SQL socket path, `memory` is a bucket, `venue` is
-                  the deployed venue.
-                run: bash -c 'curl -s "$AGENT_SERVICE_URL/health"; echo'
-              - text: >
-                  Look at the task card below. It still shows your **local**
-                  chapter 5 task. Nothing about deploying moved it.
-    checks:
-      - id: loaded
-        label: Chapter 6 is loaded, with `/trigger/wake` in `agent/main.py`
-        probe: python3 -m workbench.probe file agent/main.py trigger/wake
-        hint: Press **Load chapter 6** above. `deploy-agent.sh` refuses to run on an earlier chapter's `agent/`, which has no `main.py`.
-      - id: durable
-        label: Durable state is configured — a Cloud SQL URI in `.env`
-        probe: python3 -m workbench.probe setting CLOUD_SESSION_SERVICE_URI
-        hint: Written by `./setup-cloud-state.sh` during the pre-work. If it is missing, run that script from a terminal; the deploy would otherwise fall back to SQLite in `/tmp`, which dies with the container.
-      - id: deployed
-        label: '`deploy-agent.sh` wrote the service URL to `.env`'
-        probe: python3 -m workbench.probe setting AGENT_SERVICE_URL
-        hint: Run `./deploy-agent.sh` above and wait for `✓ deployed.` A failure before `→ agent` is a build or IAM problem — read the last lines of its output; re-running is safe.
-      - id: venue
-        label: The deployed venue answers
-        probe: python3 -m workbench.probe url $VENUE_URL/health
-        hint: The venue panel on this page is the deployed one (`VENUE_URL` in `.env`). If it does not answer, run `./deploy-venue.sh` from a terminal and reload this page.
+- id: a
+  label: Move
+  headline: Move the runtime and storage
+  body: a-move.md
+  expect:
+  - A missing prerequisite produces a red error with the setup command to run. This is a real setup issue,
+    not an intentional experiment failure.
+  - After deployment, the health check prints JSON with the concert app, a Cloud SQL session path, cloud memory,
+    and the cloud Venue URL. It then confirms the session-store read. Only now continue to 6b.
+  exercises:
+    run:
+      title: Deploy the chapter 6 layout
+      intro: Load chapter 6 once. This prepares local code; it does not deploy anything. The commands below
+        create billed cloud resources in the project shown at the top. Complete each command successfully before
+        the next. If you only want the local lab, stop after chapter 5.
+      apps:
+      - venue
+      tasks:
+      - kind: prepare
+        id: prepare
+        step: 6
+      - kind: files
+        id: files
+        open: agent/main.py
+        stage: 6
+        compare: 5
+        only:
+        - agent/main.py
+        - agent/Dockerfile
+        - agent/requirements.txt
+        - agent/monstertix/
+        - agent/concert/
+        highlight: ^SESSION_URI = os\.environ\.get|^ARTIFACT_URI = os\.environ\.get|web=False|trigger_sources=\["pubsub"\]|@app\.post\("/trigger/wake"\)|allow=\("queue",\)|CMD
+          exec uvicorn main:app|^asyncpg|^google-cloud-storage
+        highlightLabel: '`main.py` is new; `concert/` is byte-for-byte chapter 5. The two service URIs come
+          from the environment, `/trigger/wake` is the scheduler''s door, and it resumes only `queue` waits.
+          The Dockerfile and requirements are ordinary.'
+      - kind: turn
+        id: cloud-setup
+        items:
+        - text: Check the prerequisites first. This is read-only. If the cloud Venue or durable storage is
+            missing, use the two setup commands below; an error here means you are not ready to deploy the
+            Agent.
+          run: python3 scripts/cloud-check.py check
+        - text: 'Only if the check says the Venue is missing or local: deploy the ticket seller. This saves
+            its HTTPS URL to .env. The local Venue panel may still show your local lab; the cloud has a separate
+            panel.'
+          run: ./deploy-venue.sh
+        - text: 'Only if durable storage is missing: prepare Cloud SQL, its database and user, plus the memory/artifact
+            bucket and runtime permissions. A new instance can take 10–15 minutes. Wait for “durable state
+            ready”; if it says the instance is still building, rerun this command when it is RUNNABLE.'
+          run: ./setup-cloud-state.sh
+        - text: Deploy the Agent, then its Pub/Sub connection and Scheduler job. This checks prerequisites
+            again and stops on a failed step. Wait for the final deployed message before continuing.
+          run: ./deploy-agent.sh
+        - text: Verify the deployed Agent, a read from its session database, and the cloud Venue. Blank output
+            or an error is a failure, not completion. This does not yet prove a purchase or scheduled delivery;
+            you test those in 6b.
+          run: python3 scripts/cloud-check.py health
+        - text: The task card below is LOCAL. It is not the deployed task. Your local chapter 5 task is not
+            migrated. Open the cloud pages in 6b to create a new task there.
+  checks:
+  - id: loaded
+    label: Chapter 6 code is loaded
+    probe: python3 -m workbench.probe file agent/main.py trigger/wake
+    hint: Load chapter 6 above.
+  - id: prerequisites
+    label: Cloud configuration and cloud Venue health pass
+    probe: python3 scripts/cloud-check.py check
+    hint: Complete the Venue and storage setup commands above.
+  - id: service
+    label: Deployed Agent and session-store read pass
+    probe: python3 scripts/cloud-check.py health
+    hint: Finish deployment first. Read the error above; do not interpret a blank response as success.
+- id: b
+  label: Wake
+  headline: Resume it from the cloud
+  body: b-wake.md
+  expect:
+  - 'On the cloud page: the same question, *Before I book anything: how many tickets, and the most to pay for
+    each?* — banner **waiting for you**. After the read-back and *Yes, that''s right.*: banner **waiting in
+    the queue**, and the venue panel shows one ticket at #14,203.'
+  - 'After SKIP THE WAIT and `gcloud scheduler jobs run …`: the Cloud Run log reads `[server] answering queue
+    interrupt queue:wait`, `[server] woken · session …`, `[server]   called purchase`, `[server]   said   Good
+    morning! …`.'
+  - 'The page banner turns to **done · order ord_…** and the breakfast message appears without anyone typing.
+    The venue panel: **One order, exactly as intended** — two seats, within $250.'
+  exercises:
+    run:
+      title: Create the task in the cloud, then be 3am
+      intro: Use the two CLOUD pages in new tabs. The workbench’s embedded Venue and ADK UI may still be local,
+        so do not use their controls for this cloud task.
+      apps: []
+      tasks:
+      - kind: turn
+        id: cloud-wake
+        items:
+        - text: 'Print the cloud URLs. Open both: AGENT_SERVICE_URL is MonsterTix; VENUE_URL/panel is the cloud
+            ticket seller.'
+          run: python3 scripts/cloud-check.py urls
+        - text: On the CLOUD Venue page, open Advanced venue controls and press RESET THE VENUE before this
+            experiment. This clears that cloud venue’s queue and orders.
+        - text: 'On the CLOUD MonsterTix page, start a New Session. In its chat, send: “Get me and Sam two
+            tickets to the Amsterdam show.”'
+        - text: 'When its banner says waiting for you, answer in that same cloud chat: “Two tickets, up to
+            $250 each.” Then answer the read-back: “Yes, that’s right.” Wait for waiting in the queue.'
+        - text: 'On the CLOUD Venue page, press SKIP THE WAIT. Confirm that this task’s ticket is at the front.
+            Do not type another chat message: the Scheduler will resume it.'
+        - text: 'Fire the Scheduler job now instead of waiting for 03:00 UTC. Then watch the cloud page, and
+            do not touch it.
 
-  - id: b
-    label: Wake
-    headline: Resume it from the cloud
-    body: b-wake.md
-    expect:
-      - "On the cloud page: the same question, *Before I book anything: how many tickets, and the most to pay for each?* — banner **waiting for you**. After the read-back and *Yes, that's right.*: banner **waiting in the queue**, and the venue panel shows one ticket at #14,203."
-      - "After SKIP THE WAIT and `gcloud scheduler jobs run …`: the Cloud Run log reads `[server] answering queue interrupt queue:wait`, `[server] woken · session …`, `[server]   called purchase`, `[server]   said   Good morning! …`."
-      - "The page banner turns to **done · order ord_…** and the breakfast message appears without anyone typing. The venue panel: **One order, exactly as intended** — two seats, within $250."
-    exercises:
-      run:
-        title: Create the task in the cloud, then be 3am
-        intro: >
-          Not the ADK web UI. The MonsterTix page the container serves, in a
-          new browser tab. Reset the venue first so the order count is this
-          run's alone; the local session store is not touched.
-        apps: [venue]
-        tasks:
-          - kind: prepare
-            id: prepare
-            step: 6
-            scope: venue
-          - kind: turn
-            id: turn
-            items:
-              - text: Print the page's URL and open it in a **new tab**. The workbench only frames apps on this machine.
-                run: bash -c 'echo "$AGENT_SERVICE_URL"'
-              - text: Type in the page's chat. It knows nothing about this conversation yet.
-                say: Get me and Sam two tickets to the Amsterdam show.
-              - text: The banner reads **waiting for you**. On this page, answers go in the same chat box.
-                say: Two tickets, up to $250 each.
-              - text: >
-                  Confirm. It picks the Saturday, joins the queue on the
-                  deployed venue, and parks: **waiting in the queue**. Type
-                  nothing else — on this page a message while it is parked
-                  would answer the queue wait yourself.
-                say: "Yes, that's right."
-              - text: >
-                  The venue panel here **is** the deployed venue — `VENUE_URL`
-                  in `.env` — so this button reaches the queue the cloud agent
-                  is standing in.
-                press: SKIP THE WAIT
-                venue: advance-queue
-                needs: queue
-              - text: >
-                  Fire the Scheduler job now instead of waiting for 03:00 UTC.
-                  Then watch the cloud page, and do not touch it.
-                run: >-
-                  bash -c 'WHO=$(gcloud config get-value account 2>/dev/null | cut -d@ -f1 | tr "[:upper:]" "[:lower:]" | tr -c "a-z0-9-" "-" | sed "s/-*$//" | cut -c1-24); gcloud scheduler jobs run "${PRESALE_TOPIC:-presale-${WHO:-student}}" --location=$REGION --project=$PROJECT'
-              - text: Read what the container did.
-                run: >-
-                  bash -c 'WHO=$(gcloud config get-value account 2>/dev/null | cut -d@ -f1 | tr "[:upper:]" "[:lower:]" | tr -c "a-z0-9-" "-" | sed "s/-*$//" | cut -c1-24); gcloud run services logs read "${AGENT_SERVICE:-concert-${WHO:-student}}" --region=$REGION --project=$PROJECT --limit=40'
-              - text: 'The page banner: **done · order ord_…**. The venue panel: one order, two seats.'
-                look: venue
-    checks:
-      - id: order
-        label: The venue has exactly one order, for two seats
-        probe: python3 -m workbench.probe orders --count 1 --qty 2
-        hint: This counts every order on the deployed venue, so press **Reset the venue** above before starting. No order means the job fired before the run was parked, or before SKIP THE WAIT — fire it again. `Job.state must be ENABLED` means the job is paused; `gcloud scheduler jobs resume <job> --location=$REGION` and fire again. Two orders means a second task was started on the page.
-      - id: service
-        label: The deployed service is still the one in `.env`
-        probe: python3 -m workbench.probe setting AGENT_SERVICE_URL
-        hint: Set by `./deploy-agent.sh` in 6A. Missing means the deploy did not finish, or `./destroy-agent.sh` already ran.
-      - id: venue
-        label: The deployed venue answers
-        probe: python3 -m workbench.probe url $VENUE_URL/health
-        hint: The cloud agent buys from this venue. If it does not answer, nothing in the cloud can buy — run `./deploy-venue.sh` from a terminal, then `./deploy-agent.sh` again so the agent gets the new URL.
+            '
+          run: bash -c 'WHO=$(gcloud config get-value account 2>/dev/null | cut -d@ -f1 | tr "[:upper:]" "[:lower:]"
+            | tr -c "a-z0-9-" "-" | sed "s/-*$//" | cut -c1-24); gcloud scheduler jobs run "${PRESALE_TOPIC:-presale-${WHO:-student}}"
+            --location=$REGION --project=$PROJECT'
+        - text: Read what the container did.
+          run: bash -c 'WHO=$(gcloud config get-value account 2>/dev/null | cut -d@ -f1 | tr "[:upper:]" "[:lower:]"
+            | tr -c "a-z0-9-" "-" | sed "s/-*$//" | cut -c1-24); gcloud run services logs read "${AGENT_SERVICE:-concert-${WHO:-student}}"
+            --region=$REGION --project=$PROJECT --limit=40'
+        - text: On the CLOUD MonsterTix page, expect done and an order ID. On the CLOUD Venue page, expect
+            one order for two seats. The local panels and task card do not track this cloud run.
+  checks:
+  - id: service
+    label: Cloud Agent can read its session database
+    probe: python3 scripts/cloud-check.py health
+    hint: Finish 6a first. To verify the purchase and Scheduler delivery, inspect the cloud pages and logs
+      above.
+- id: c
+  label: Cleanup
+  headline: Explain it, then clean up
+  body: c-cleanup.md
+  expect:
+  - '`./destroy-agent.sh` prints `→ removed  schedule …`, `→ removed  subscription …`, `→ removed  topic …`,
+    `→ removed  service …`, then `✓ Chapter 6 infrastructure removed.` and lists Cloud SQL and the bucket under
+    *still there, because they hold your data and they keep billing*.'
+  - '`./destroy-venue.sh` prints `→ removed  venue service venue-…` and `→ .env     VENUE_URL cleared`. After
+    it, the CLOUD Venue tab stops answering. A local Venue panel remains separate.'
+  - '`./destroy-agent.sh --all` also prints `→ removed  Cloud SQL workshop-sessions` and `→ removed  bucket
+    gs://…`, and drops the cloud URIs from `.env`. Anything already gone is reported as `→ absent`.'
+  exercises:
+    destroy:
+      title: Take it down, in order
+      intro: 'These delete real cloud resources and cannot be undone. The order matters: the schedule goes
+        first, so nothing fires at a half-deleted stack. Skip whatever you want to keep.
 
-  - id: c
-    label: Cleanup
-    headline: Explain it, then clean up
-    body: c-cleanup.md
-    expect:
-      - "`./destroy-agent.sh` prints `→ removed  schedule …`, `→ removed  subscription …`, `→ removed  topic …`, `→ removed  service …`, then `✓ Chapter 6 infrastructure removed.` and lists Cloud SQL and the bucket under *still there, because they hold your data and they keep billing*."
-      - "`./destroy-venue.sh` prints `→ removed  venue service venue-…` and `→ .env     VENUE_URL cleared`. After it, the venue panel on this page stops answering and the `url $VENUE_URL/health` checks in earlier chapters fail — the venue is gone, not broken."
-      - "`./destroy-agent.sh --all` also prints `→ removed  Cloud SQL workshop-sessions` and `→ removed  bucket gs://…`, and drops the cloud URIs from `.env`. Anything already gone is reported as `→ absent`."
-    exercises:
-      destroy:
-        title: Take it down, in order
-        intro: >
-          These delete real cloud resources and cannot be undone. The order
-          matters: the schedule goes first, so nothing fires at a half-deleted
-          stack. Skip whatever you want to keep.
-        apps: []
-        tasks:
-          - kind: turn
-            id: turn
-            items:
-              - text: 'Scheduler job → push subscription → topic → the agent''s Cloud Run service. Cloud SQL and the bucket are left alone.'
-                run: ./destroy-agent.sh
-              - text: 'The venue. After this the venue panel on every page of this workbench has nothing to show, and `VENUE_URL` in `.env` is blank.'
-                run: ./destroy-venue.sh
-              - text: >
-                  **Your choice.** Cloud SQL and the bucket hold your sessions,
-                  memory and artifacts, and both keep billing. When you are
-                  certain you are finished:
-                run: ./destroy-agent.sh --all
-    checks: []
+        '
+      apps: []
+      tasks:
+      - kind: turn
+        id: cloud-cleanup
+        items:
+        - text: Scheduler job → push subscription → topic → the agent's Cloud Run service. Cloud SQL and the
+            bucket are left alone.
+          run: ./destroy-agent.sh
+        - text: Delete the cloud Venue. Its cloud tab stops answering. The local Venue panel is separate.
+          run: ./destroy-venue.sh
+        - text: '**Your choice.** Cloud SQL and the bucket hold your sessions, memory and artifacts, and both
+            keep billing. When you are certain you are finished:
+
+            '
+          run: ./destroy-agent.sh --all
+  checks: []
