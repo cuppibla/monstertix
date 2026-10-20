@@ -157,6 +157,18 @@ Open **http://localhost:4800** — in Cloud Shell, **Web Preview → Change port
 **Load step 1** once so you have seen what it does: it stops the agent, presses
 RESET THE VENUE, runs `./use-solution.sh 1 --force`, and starts the agent again.
 
+> **4800 is not in Web Preview's quick list.** The menu offers 8080 and a few
+> others; pick **Change port** and type `4800` yourself. Choosing the default
+> 8080 opens a tab with nothing behind it (the venue is on Cloud Run, not on
+> 8080 of your Cloud Shell).
+
+> **`Unable to forward your request to a backend` / `Couldn't connect to a
+> server on port 4800`?** The workbench was not up yet when the tab opened —
+> Web Preview only forwards to a port something is already listening on.
+> `./workbench.sh` prints its link only once the port answers; if it has, just
+> reload the tab. From a terminal, `curl -s localhost:4800/api/env` answers
+> with your project and venue when it is ready.
+
 Three things to look at, so they are not new on the day:
 
 | Where | What it is |
@@ -225,15 +237,19 @@ is the course; nothing in it needs an instructor present.
 
 - **Web Preview** is how you reach ports: top-right → *Change port* → 4800 for
   the workbench. The workbench proxies the ADK web UI, the venue panel and the
-  MonsterTix page, so 4800 is the only port you need to preview.
+  MonsterTix page, so 4800 is the only port you need to preview. Nothing in
+  the course asks you to preview 8000, 8080 or 8090 directly.
 - **It idles out after about an hour** and the VM can restart. `~/monstertix`
   is in your home directory and survives, and so does `sessions.db`. Run
-  `./workbench.sh` again. A parked task is still parked — Chapter 4 is exactly
+  `./workbench.sh` again (it is `nohup`'d, so closing the terminal tab alone
+  does not stop it). A parked task is still parked — Chapter 4 is exactly
   about this.
 - **`adk: command not found`** means a new tab without the venv:
   `. ./set_env.sh`.
-- **Disk.** The venv and the workbench's `node_modules` need a few hundred MB.
-  Cloud Shell's 5 GB is plenty unless it was already full.
+- **Disk.** The venv and the workbench's `node_modules` need about 300 MB.
+  Cloud Shell's 5 GB is plenty unless other labs already filled it;
+  `./verify.sh` has a `disk` row, and Cloud Shell itself warns at 95 %.
+  `du -sh ~/* | sort -h` finds what to remove.
 - **Billing.** Cloud Run scales to zero, so an idle venue costs nothing. The
   Cloud SQL instance (`db-f1-micro`) and the bucket keep billing until Chapter
   6's `./destroy-agent.sh --all`. If you set up and then cannot attend, run

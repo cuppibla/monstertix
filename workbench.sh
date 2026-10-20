@@ -88,7 +88,11 @@ start() {
   fi
   echo ""
   if [ -n "${CLOUD_SHELL:-}" ]; then
+    echo "  ✓ the workbench answers on :$PORT"
+    echo ""
     echo "  Open it: Web Preview (top right) → Change port → $PORT"
+    echo "           ($PORT is not in the quick list; type it. This one port frames"
+    echo "            the ADK web UI, the venue panel and MonsterTix.)"
   else
     echo "  Open it: http://localhost:$PORT"
   fi

@@ -482,31 +482,34 @@ else
 fi
 
 echo ""
-echo "Setup checks finished. Review any warnings above; cloud setup is NOT yet verified."
-echo "  Before Chapter 6: ./deploy-venue.sh, then ./setup-cloud-state.sh."
-echo "  After loading Chapter 6: python3 scripts/cloud-check.py check"
 if ! grep -q "venue deployed" /tmp/venue-deploy.log; then
-  echo "✗ Cloud venue setup failed. Fix the error above before Chapter 6."
+  echo "✗ The venue did not deploy, so setup stops here. Fix the error above,"
+  echo "  then run ./deploy-venue.sh (or ./setup.sh again)."
   exit 1
 fi
+echo "✓ setup complete."
 echo ""
-if [ -n "${VENUE_URL:-}" ]; then
-  echo "  your venue:  $VENUE_URL/panel"
-  echo "               keep this tab open all day. It is where you press the buttons,"
-  echo "               and where you check whether the agent actually did what it said."
-else
-  echo "  ⚠ no venue URL. The agent has nothing to buy from until you run:"
-  echo "               ./deploy-venue.sh"
-fi
+echo "  your venue:  $VENUE_URL/panel"
+echo "               keep this tab open all day. It is where you press the buttons,"
+echo "               and where you check whether the agent actually did what it said."
 echo ""
 echo "  check it:    ./verify.sh"
+echo "  chapter 6:   Cloud SQL is still building in the background (~/.cloudsql-create.log);"
+echo "               ./setup-cloud-state.sh collects it, and nothing before Chapter 6 needs it."
 echo ""
 
 # The workbench: every chapter in the browser, with the venue, the agent,
 # MonsterTix and the clock as switches. A failure here does not fail setup;
-# the codelab's terminal commands work without it.
+# the codelab's terminal commands work without it. workbench.sh waits until
+# the port answers before it prints the link, so a tab opened on that link
+# never lands on "Unable to forward your request to a backend".
 if ./workbench.sh start; then
-  :
+  if [ -n "${CLOUD_SHELL:-}" ]; then
+    echo "  4800 is not in Web Preview's quick list: pick Change port and type 4800."
+    echo "  If a tab says 'Unable to forward your request to a backend', the"
+    echo "  workbench was not up yet — reload it once ./workbench.sh has printed its link."
+    echo ""
+  fi
 else
   echo "  ⚠ the workbench did not start. The codelab works without it."
   echo "    Try again with:  ./workbench.sh"

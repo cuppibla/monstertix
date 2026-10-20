@@ -174,6 +174,34 @@ else
   fail "workbench page" "web/dist missing and no npm — install Node, or use the terminal path"
 fi
 
+# Is it answering? In Cloud Shell this is the only port you preview: the
+# ADK web UI, the venue panel and MonsterTix are all reached through it.
+WB_PORT="${WORKBENCH_PORT:-4800}"
+if curl -sf --max-time 5 "http://127.0.0.1:$WB_PORT/api/env" >/dev/null 2>&1; then
+  if [ -n "${CLOUD_SHELL:-}" ]; then
+    pass "workbench" "on :$WB_PORT — Web Preview → Change port → $WB_PORT"
+  else
+    pass "workbench" "http://localhost:$WB_PORT"
+  fi
+else
+  warn "workbench" "not running — ./workbench.sh starts it"
+fi
+
+# --- room to work ----------------------------------------------------------
+# Cloud Shell's home disk is 5 GB and shared with every other lab you have
+# cloned there. The venv and node_modules need about 300 MB; a build that
+# runs out of space fails with an error that does not say so.
+FREE_MB=$(df -Pm "$HOME" 2>/dev/null | awk 'NR==2 {print $4}')
+if [ -n "${FREE_MB:-}" ]; then
+  if [ "$FREE_MB" -lt 300 ]; then
+    fail "disk" "${FREE_MB} MB free in $HOME — clear space before ./setup.sh"
+  elif [ "$FREE_MB" -lt 1000 ]; then
+    warn "disk" "${FREE_MB} MB free in $HOME — enough, but close"
+  else
+    pass "disk" "${FREE_MB} MB free in $HOME"
+  fi
+fi
+
 echo ""
 if [ "$FAILED" -eq 0 ]; then
   echo "  Ready. Cloud SQL is still building in the background and nothing"
